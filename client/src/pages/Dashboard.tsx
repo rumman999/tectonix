@@ -7,6 +7,9 @@ import { AlertFeed } from "@/components/dashboard/AlertFeed";
 import { seismicLogs } from "@/data/mockData";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Radio, Building2, AlertTriangle, Activity } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 const Dashboard = () => {
   const stats = [
@@ -15,6 +18,16 @@ const Dashboard = () => {
     { icon: AlertTriangle, label: "Active Alerts", value: "3", change: "-2" },
     { icon: Activity, label: "Network Health", value: "99.8%", change: "+0.1%" },
   ];
+
+  const navigate = useNavigate();
+  const [user, setUser] = useState<{ full_name: string; role_type: string } | null>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,15 +41,17 @@ const Dashboard = () => {
           className="mb-8"
         >
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Command Center
+            {/* Command Center */}
+            Welcome,
           </h1>
           <p className="text-muted-foreground">
-            Real-time seismic monitoring and risk assessment for Dhaka Metropolitan
+            {/* Real-time seismic monitoring and risk assessment for Dhaka Metropolitan */}
+            <span className="font-semibold text-primary">{user?.full_name || "User"}</span> ({user?.role_type})
           </p>
         </motion.div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -61,7 +76,7 @@ const Dashboard = () => {
               </div>
             </motion.div>
           ))}
-        </div>
+        </div> */}
 
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-6">
@@ -72,7 +87,7 @@ const Dashboard = () => {
             transition={{ delay: 0.2 }}
             className="col-span-12 lg:col-span-8 h-[400px]"
           >
-            <InteractiveMap />
+            {/* <InteractiveMap /> */}
           </motion.div>
 
           {/* Alert Feed */}
@@ -82,31 +97,31 @@ const Dashboard = () => {
             transition={{ delay: 0.3 }}
             className="col-span-12 lg:col-span-4"
           >
-            <AlertFeed />
+            {/* <AlertFeed /> */}
           </motion.div>
 
           {/* Seismic Chart */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="col-span-12 lg:col-span-8"
           >
             <SeismicChart />
-          </motion.div>
+          </motion.div> */}
 
           {/* Risk Distribution */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             className="col-span-12 lg:col-span-4"
           >
             <RiskDistributionChart />
-          </motion.div>
+          </motion.div> */}
 
           {/* Sensor Log Table */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
@@ -164,7 +179,7 @@ const Dashboard = () => {
                 </table>
               </div>
             </div>
-          </motion.div>
+          </motion.div> */}
         </div>
       </main>
     </div>

@@ -28,6 +28,11 @@ const menuItems = [
   { icon: FileWarning, label: "Report Damage", href: "/report" },
   { icon: Shield, label: "Rescue Ops", href: "/rescue" },
   { icon: Settings, label: "Settings", href: "/dashboard" },
+  {
+  icon: Radio,
+  label: "Emergency Beacon",
+  href: "/beacon"
+}
 ];
 
 export const DashboardSidebar = () => {

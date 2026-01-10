@@ -8,9 +8,9 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Seismic Mode", href: "/seismic" },
-    { label: "AI Scanner", href: "/scanner" },
+    // { label: "Dashboard", href: "/dashboard" },
+    // { label: "Seismic Mode", href: "/seismic" },
+    // { label: "AI Scanner", href: "/scanner" },
   ];
 
   return (
@@ -49,7 +49,7 @@ export const Navbar = () => {
             {/* Login Button */}
             <Link
               to="/auth"
-              className="ml-4 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
+              className="ml-4 px-5 py-2.5 bg-cyan-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
             >
               Login / Sign Up
             </Link>

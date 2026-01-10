@@ -12,6 +12,8 @@ import RetrofitCalculator from "./pages/RetrofitCalculator";
 import DamageReport from "./pages/DamageReport";
 import RescueCoordinator from "./pages/RescueCoordinator";
 import NotFound from "./pages/NotFound";
+//import ProtectedRoute from "./components/ProtectedRoute";
+import BeaconView from "./components/dashboard/BeaconView";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +32,7 @@ const App = () => (
           <Route path="/retrofit" element={<RetrofitCalculator />} />
           <Route path="/report" element={<DamageReport />} />
           <Route path="/rescue" element={<RescueCoordinator />} />
+          <Route path="/beacon" element={<BeaconView />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -7,7 +7,7 @@ const Landing = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <HeroSection />
-      <LiveTicker />
+      {/* <LiveTicker /> */}
     </div>
   );
 };

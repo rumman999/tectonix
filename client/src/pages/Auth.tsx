@@ -6,6 +6,8 @@ import {
   BadgeCheck, Award, Building2, Briefcase, Heart, ChevronDown 
 } from "lucide-react";
 import heroBackground from "@/assets/hero-bg.jpg";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 
 type UserRole = "citizen" | "specialist" | "owner" | "volunteer" | "responder";
 
@@ -67,6 +69,9 @@ export const Auth = () => {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
   // Form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,12 +87,65 @@ export const Auth = () => {
   const [rank, setRank] = useState("");
   const [proficiency, setProficiency] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === "responder") {
-      navigate("/rescue");
-    } else {
-      navigate("/dashboard");
+    setLoading(true); // Disable button
+
+    // 1. Determine URL
+    const endpoint = isLogin
+      ? "http://localhost:5000/api/auth/login"
+      : "http://localhost:5000/api/auth/register";
+
+    // 2. Map Frontend State -> Backend Database Columns
+    // Backend expects: "Specialist" (Capitalized), Frontend has: "specialist" (lowercase)
+    const formattedRole =
+      role === "responder"
+        ? "First_Responder" // DB expects "First_Responder"
+        : role.charAt(0).toUpperCase() + role.slice(1); // "citizen" -> "Citizen"
+
+    const payload = {
+      email,
+      password,
+      // Backend expects 'full_name', you have 'fullName'
+      full_name: fullName,
+      phone_number: phone,
+      role_type: formattedRole,
+
+      // Specific Fields Mapping
+      // Backend Column : Frontend State
+      license_no: licenseNumber,
+      specialization: specialization,
+      badge_no: badgeNumber,
+      rank: rank,
+      legal_name: companyName, // Backend calls it 'legal_name'
+      owner_type: ownerType,
+      proficiency_level: proficiency, // Backend calls it 'proficiency_level'
+    };
+
+    try {
+      // 3. Send Request
+      const response = await axios.post(endpoint, payload);
+
+      // 4. Handle Success
+      const { token, user } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      toast({ title: "Success", description: `Welcome ${user.full_name}` });
+
+      // 5. Navigate based on role (Keep your original logic here)
+      if (user.role_type === "First_Responder") {
+        navigate("/rescue");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      // 6. Handle Error
+      console.error(error);
+      const message = error.response?.data?.message || "Login failed";
+      toast({ variant: "destructive", title: "Error", description: message });
+    } finally {
+      setLoading(false); // Re-enable button
     }
   };
 
@@ -524,12 +582,13 @@ export const Auth = () => {
             {/* Submit Button */}
             <motion.button
               type="submit"
-              whileHover={{ scale: 1.02 }}
+              disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className={`w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r ${currentRoleConfig.gradient} shadow-lg ${currentRoleConfig.shadow} flex items-center justify-center gap-2 transition-all mt-2`}
+              className={`w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r ${currentRoleConfig.gradient} shadow-lg ${currentRoleConfig.shadow} flex items-center justify-center gap-2 transition-all mt-2 ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
             >
-              {isLogin ? "Sign In" : "Create Account"}
-              <ArrowRight className="h-5 w-5" />
+              {loading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
+              {!loading && <ArrowRight className="h-5 w-5" />}
             </motion.button>
           </form>
 
