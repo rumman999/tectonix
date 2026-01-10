@@ -22,12 +22,12 @@ import {
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Radio, label: "Seismic Mode", href: "/seismic" },
-  { icon: ScanLine, label: "AI Scanner", href: "/scanner" },
-  { icon: Calculator, label: "Retrofit Calc", href: "/retrofit" },
-  { icon: FileWarning, label: "Report Damage", href: "/report" },
-  { icon: Shield, label: "Rescue Ops", href: "/rescue" },
-  { icon: Settings, label: "Settings", href: "/dashboard" },
+  { icon: Radio, label: "Seismic Mode", href: "#" }, //seismic
+  { icon: ScanLine, label: "AI Scanner", href: "#" }, //scanner
+  { icon: Calculator, label: "Retrofit Calc", href: "#" }, //retrofit
+  { icon: FileWarning, label: "Report Damage", href: "#" }, // report
+  { icon: Shield, label: "Rescue Ops", href: "#" }, // rescue
+  { icon: Settings, label: "Settings", href: "/#" },
   {
   icon: Radio,
   label: "Emergency Beacon",

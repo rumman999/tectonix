@@ -84,7 +84,7 @@ export const HeroSection = () => {
             <GlowButton
               variant="primary"
               size="lg"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/")}
             >
               Launch Dashboard
               <ArrowRight className="h-5 w-5" />
@@ -122,7 +122,7 @@ export const HeroSection = () => {
       </div>
 
       {/* Scroll Indicator */}
-      <motion.div
+      {/* <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
@@ -135,7 +135,7 @@ export const HeroSection = () => {
         >
           <div className="w-1 h-2 bg-primary rounded-full" />
         </motion.div>
-      </motion.div>
+      </motion.div> */}
     </section>
   );
 };
