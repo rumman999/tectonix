@@ -118,7 +118,7 @@ const BeaconView = () => {
       <Card>
         <CardHeader>
           <CardTitle>Activation History</CardTitle>
-          <CardDescription>Your previous distress signals</CardDescription>
+          <CardDescription>Previous distress signals</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

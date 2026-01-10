@@ -38,9 +38,9 @@ export const getMyBeacons = async (req, res) => {
               ST_Y(active_gps::geometry) as lat, 
               ST_X(active_gps::geometry) as lng 
        FROM Distress_Beacons 
-       WHERE user_id = $1 
-       ORDER BY activated_at DESC`,
-      [user_id]
+     
+       ORDER BY activated_at DESC`
+   
     );
 
     res.json(result.rows);
