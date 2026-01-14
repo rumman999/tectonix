@@ -13,7 +13,7 @@ import DamageReport from "./pages/DamageReport";
 import RescueCoordinator from "./pages/RescueCoordinator";
 import NotFound from "./pages/NotFound";
 //import ProtectedRoute from "./components/ProtectedRoute";
-import BeaconView from "./components/dashboard/BeaconView";
+import BeaconView from "@/components/dashboard/BeaconView";
 
 const queryClient = new QueryClient();
 

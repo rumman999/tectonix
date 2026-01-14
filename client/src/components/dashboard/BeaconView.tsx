@@ -1,49 +1,63 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, MapPin, Radio, Loader2 } from "lucide-react";
+import axios from "axios";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { 
+  AlertTriangle, 
+  Radio, 
+  ShieldAlert, 
+  History, 
+  ArrowLeft, 
+  Loader2,
+  MapPin,
+  PowerOff 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import api from "@/lib/axios"; // Use our secure instance
+// FIX: Use the hook pattern for Toasts
+import { useToast } from "@/hooks/use-toast"; 
 
 interface BeaconLog {
   beacon_id: string;
-  status: string;
+  status: "Active" | "Resolved" | "False_Alarm";
   activated_at: string;
   lat: number;
   lng: number;
 }
 
-const BeaconView = () => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+// FIX: Ensure 'export default' is present to resolve App.tsx import error
+export default function BeaconView() {
+  const navigate = useNavigate();
+  const { toast } = useToast(); // FIX: Initialize the toast hook
+  
+  const [isActive, setIsActive] = useState(false);
   const [history, setHistory] = useState<BeaconLog[]>([]);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Get GPS Location on mount
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          toast({ variant: "destructive", title: "GPS Error", description: "Enable location to use this feature." });
-        }
-      );
-    }
-  }, []);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  };
 
-  // Fetch previous beacons
   const fetchHistory = async () => {
     try {
-      const res = await api.get("/beacons/history");
+      const res = await axios.get("http://localhost:5000/api/beacons/history", getAuthHeaders());
       setHistory(res.data);
+      
+      // Smart Logic: If the LATEST log is 'Active', the beacon is ON.
+      if (res.data.length > 0 && res.data[0].status === "Active") {
+        setIsActive(true);
+      } else {
+        setIsActive(false);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch history");
     }
   };
 
@@ -51,96 +65,213 @@ const BeaconView = () => {
     fetchHistory();
   }, []);
 
-  const handleActivate = async () => {
-    if (!location) return toast({ variant: "destructive", title: "No GPS Signal", description: "Waiting for satellite lock..." });
-    
+  const handleToggleBeacon = async () => {
     setLoading(true);
+    setError("");
+    
     try {
-      await api.post("/beacons/activate", {
-        latitude: location.lat,
-        longitude: location.lng
+      if (!navigator.geolocation) {
+        throw new Error("Geolocation is not supported by your browser");
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+          // TOGGLE LOGIC: 
+          // If active -> Send "Resolved" (Deactivate)
+          // If inactive -> Send "Active" (Activate)
+          const newStatus = isActive ? "Resolved" : "Active";
+          
+          const payload = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            status: newStatus 
+          };
+
+          await axios.post(
+            "http://localhost:5000/api/beacons/activate", 
+            payload,
+            getAuthHeaders()
+          );
+          
+          // Toast Notification Logic
+          if (!isActive) {
+             // We just turned it ON
+             toast({ 
+               title: "Beacon Activated!", 
+               description: "Live location broadcasting to rescue teams.",
+               variant: "destructive" 
+             });
+          } else {
+             // We just turned it OFF
+             toast({ 
+               title: "Beacon Deactivated", 
+               description: "Your status has been updated to Resolved.",
+               // variant: "default" (green/normal)
+             });
+          }
+
+          // Update local state
+          setIsActive(!isActive);
+          fetchHistory(); 
+
+        } catch (err: any) {
+          setError(err.response?.data?.message || "Failed to update beacon");
+        } finally {
+          setLoading(false);
+        }
       });
-      
-      toast({
-        title: "BEACON ACTIVATED",
-        description: "Rescue teams have been alerted with your coordinates.",
-        className: "bg-red-600 text-white border-none"
-      });
-      
-      fetchHistory(); // Refresh list
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Failed", description: error.response?.data?.message || "Server Error" });
-    } finally {
+
+    } catch (err: any) {
+      setError(err.message);
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4">
-      {/* HEADER */}
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-red-600 flex items-center justify-center gap-2">
-          <Radio className="h-8 w-8 animate-pulse" /> EMERGENCY BEACON
-        </h2>
-        <p className="text-muted-foreground">Only use this in life-threatening situations.</p>
+    <div className="space-y-6 max-w-4xl mx-auto p-4 md:p-0">
+      
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigate(-1)}
+          className="hover:bg-white/10 text-muted-foreground hover:text-white rounded-full"
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <ShieldAlert className="h-6 w-6 text-primary" />
+            Emergency Beacon
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Broadcast your live location to nearby rescue teams.
+          </p>
+        </div>
       </div>
 
-      {/* THE BIG RED BUTTON */}
-      <Card className="border-red-100 shadow-xl bg-gradient-to-b from-white to-red-50">
-        <CardContent className="pt-10 pb-10 flex flex-col items-center justify-center space-y-6">
-          <div className="relative">
-            {/* Pulsing Effect */}
-            <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-20"></div>
-            <button
-              onClick={handleActivate}
-              disabled={loading || !location}
-              className="relative w-48 h-48 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 transition-all shadow-2xl flex flex-col items-center justify-center border-4 border-red-400 group disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <Loader2 className="h-16 w-16 text-white animate-spin" />
-              ) : (
-                <>
-                  <AlertTriangle className="h-16 w-16 text-white mb-2" />
-                  <span className="text-white font-bold text-lg tracking-widest">HELP ME</span>
-                </>
-              )}
-            </button>
+      {/* Main Action Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`glass-card rounded-2xl p-8 text-center border shadow-lg relative overflow-hidden transition-colors duration-500 ${isActive ? 'border-red-500/40 bg-red-950/10' : 'border-white/10'}`}
+      >
+        {/* Background Pulse Effect if Active */}
+        {isActive && (
+          <div className="absolute inset-0 bg-red-500/10 animate-pulse z-0 pointer-events-none" />
+        )}
+
+        <div className="relative z-10 flex flex-col items-center gap-6">
+          <div className={`p-4 rounded-full transition-all duration-500 ${isActive ? 'bg-red-500/20' : 'bg-primary/10'}`}>
+            <Radio className={`h-12 w-12 ${isActive ? 'text-red-500 animate-ping' : 'text-primary'}`} />
           </div>
 
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white px-4 py-2 rounded-full border shadow-sm">
-            <MapPin className="h-4 w-4 text-blue-500" />
-            {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Locating..."}
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold text-foreground">
+              {isActive ? "BEACON ACTIVE" : "System Ready"}
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              {isActive 
+                ? "Your location is continuously broadcasting. Click below to resolve the alert when you are safe." 
+                : "Press the button below only in case of a critical emergency. This will share your GPS coordinates."}
+            </p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* HISTORY TABLE */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activation History</CardTitle>
-          <CardDescription>Previous distress signals</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {history.length === 0 ? (
-              <p className="text-center text-gray-500 py-4">No active distress signals.</p>
+          {/* The Toggle Button */}
+          <button
+            onClick={handleToggleBeacon}
+            disabled={loading} // Only disable while network request is happening
+            className={`
+              group relative w-48 h-48 rounded-full border-4 flex items-center justify-center flex-col gap-2 transition-all duration-300 shadow-xl cursor-pointer
+              ${isActive 
+                ? "border-red-500 bg-red-900/80 hover:bg-red-950 text-white animate-pulse hover:animate-none" 
+                : "border-red-600 bg-red-600 hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(220,38,38,0.7)]"
+              }
+            `}
+          >
+            {loading ? (
+              <Loader2 className="h-10 w-10 text-white animate-spin" />
+            ) : isActive ? (
+              // ACTIVE STATE (Show "Stop")
+              <>
+                <PowerOff className="h-10 w-10 text-white" />
+                <span className="text-white font-bold tracking-wider text-lg">DEACTIVATE</span>
+                <span className="text-xs text-red-200">(I am Safe)</span>
+              </>
             ) : (
-              history.map((log) => (
-                <Alert key={log.beacon_id} className="border-l-4 border-l-red-500 bg-red-50/50">
-                  <Radio className="h-4 w-4 text-red-600" />
-                  <AlertTitle className="text-red-900 font-bold">Signal Sent</AlertTitle>
-                  <AlertDescription className="text-red-800 flex justify-between items-center mt-1">
-                    <span>{new Date(log.activated_at).toLocaleString()}</span>
-                    <span className="bg-red-200 text-red-800 px-2 py-1 rounded text-xs font-bold uppercase">{log.status}</span>
-                  </AlertDescription>
-                </Alert>
-              ))
+              // INACTIVE STATE (Show "Activate")
+              <>
+                <AlertTriangle className="h-10 w-10 text-white fill-white/20" />
+                <span className="text-white font-bold tracking-wider text-lg">ACTIVATE</span>
+                <span className="text-xs text-red-200">SOS</span>
+              </>
             )}
-          </div>
-        </CardContent>
-      </Card>
+            
+            {/* Ripple rings (Only visible when NOT active) */}
+            {!isActive && (
+              <span className="absolute inset-0 rounded-full border border-white/20 scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-100 transition-all duration-700" />
+            )}
+          </button>
+
+          {error && (
+            <Alert variant="destructive" className="max-w-md mt-4 bg-red-950/50 border-red-900">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </motion.div>
+
+      {/* History List */}
+      <motion.div
+        initial={{ opacity: 0, delay: 0.1 }}
+        animate={{ opacity: 1 }}
+        className="glass-card rounded-xl p-6"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <History className="h-5 w-5 text-muted-foreground" />
+          <h3 className="font-semibold text-foreground">Activation History</h3>
+        </div>
+
+        <div className="space-y-3">
+          {history.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No previous activations found.</p>
+          ) : (
+            history.map((log) => (
+              <div 
+                key={log.beacon_id} 
+                className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${
+                    log.status === 'Active' ? 'bg-red-500/20 text-red-500' : 
+                    log.status === 'Resolved' ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-500'
+                  }`}>
+                    <Radio className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        {new Date(log.activated_at).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(log.activated_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                      <MapPin className="h-3 w-3" />
+                      {log.lat.toFixed(4)}, {log.lng.toFixed(4)}
+                    </div>
+                  </div>
+                </div>
+                <StatusBadge status={log.status} size="sm" />
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
     </div>
   );
-};
-
-export default BeaconView;
+}

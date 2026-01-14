@@ -1,51 +1,65 @@
 import pool from "../config/db.js";
 
+// POST /api/beacons/activate
 export const createBeacon = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { lat, lng, status } = req.body;
     
-    const user_id = req.user.user_id; 
+    // ✅ REAL AUTH: Get the user_id directly from the decoded token
+    // The middleware guarantees 'req.user' exists if it reaches here.
+    const userId = req.user.user_id; 
 
-    if (!latitude || !longitude) {
-      return res.status(400).json({ message: "GPS Location required" });
+    if (!lat || !lng) {
+      return res.status(400).json({ error: "GPS coordinates are required" });
     }
 
+    const query = `
+      INSERT INTO Distress_Beacons (user_id, active_gps, status, activated_at)
+      VALUES ($1, ST_GeographyFromText($2), $3, NOW())
+      RETURNING beacon_id, status, activated_at, 
+                ST_Y(active_gps::geometry) as lat, 
+                ST_X(active_gps::geometry) as lng
+    `;
+    
+    const pointStr = `POINT(${lng} ${lat})`;
 
-    const newBeacon = await pool.query(
-      `INSERT INTO Distress_Beacons (user_id, active_gps, status) 
-       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), 'Active') 
-       RETURNING beacon_id, status, activated_at`,
-      [user_id, longitude, latitude]
-    );
+    const newBeacon = await pool.query(query, [
+      userId, 
+      pointStr, 
+      status || 'Active'
+    ]);
 
-    res.json({ 
-      message: "Rescue Beacon Activated!", 
-      beacon: newBeacon.rows[0] 
-    });
+    res.json(newBeacon.rows[0]);
 
   } catch (err) {
-    console.error(err.message);
+    console.error("Create Beacon Error:", err.message);
     res.status(500).send("Server Error");
   }
 };
 
+// GET /api/beacons/history
 export const getMyBeacons = async (req, res) => {
   try {
-    const user_id = req.user.user_id;
-    
-    const result = await pool.query(
-      `SELECT beacon_id, status, activated_at, 
-              ST_Y(active_gps::geometry) as lat, 
-              ST_X(active_gps::geometry) as lng 
-       FROM Distress_Beacons 
-     
-       ORDER BY activated_at DESC`
-   
-    );
+    // ✅ REAL AUTH: Fetch only this user's beacons
+    const userId = req.user.user_id;
 
+    const query = `
+      SELECT 
+        beacon_id, 
+        status, 
+        activated_at,
+        ST_Y(active_gps::geometry) as lat, 
+        ST_X(active_gps::geometry) as lng
+      FROM Distress_Beacons 
+      WHERE user_id = $1 
+      ORDER BY activated_at DESC
+    `;
+    
+    const result = await pool.query(query, [userId]);
     res.json(result.rows);
+
   } catch (err) {
-    console.error(err.message);
+    console.error("Get Beacons Error:", err.message);
     res.status(500).send("Server Error");
   }
 };

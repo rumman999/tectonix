@@ -1,48 +1,70 @@
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
-  status: "safe" | "warning" | "danger" | "moderate" | "high" | "stable" | "alert";
-  size?: "sm" | "md";
-  pulse?: boolean;
-  children?: ReactNode;
+  status: string;
+  size?: "sm" | "md" | "lg";
 }
 
-export const StatusBadge = ({ status, size = "md", pulse = true, children }: StatusBadgeProps) => {
-  const statusConfig = {
-    safe: { bg: "bg-success/20", text: "text-success", dot: "bg-success" },
-    stable: { bg: "bg-success/20", text: "text-success", dot: "bg-success" },
-    warning: { bg: "bg-warning/20", text: "text-warning", dot: "bg-warning" },
-    moderate: { bg: "bg-warning/20", text: "text-warning", dot: "bg-warning" },
-    danger: { bg: "bg-destructive/20", text: "text-destructive", dot: "bg-destructive" },
-    high: { bg: "bg-destructive/20", text: "text-destructive", dot: "bg-destructive" },
-    alert: { bg: "bg-accent/20", text: "text-accent", dot: "bg-accent" },
+export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+  // Normalize status to lowercase to ensure matching works (e.g., "Active" -> "active")
+  const normalizedStatus = status?.toLowerCase() || "unknown";
+
+  // Configuration for all possible statuses in your app
+  const config: Record<string, { style: string; label: string }> = {
+    // Beacon Statuses
+    active: { 
+      style: "bg-red-500/15 text-red-600 border-red-500/30 hover:bg-red-500/25", 
+      label: "Active" 
+    },
+    resolved: { 
+      style: "bg-green-500/15 text-green-600 border-green-500/30 hover:bg-green-500/25", 
+      label: "Resolved" 
+    },
+    false_alarm: { 
+      style: "bg-gray-500/15 text-gray-600 border-gray-500/30 hover:bg-gray-500/25", 
+      label: "False Alarm" 
+    },
+    
+    // Seismic/Dashboard Statuses
+    stable: { 
+      style: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/25", 
+      label: "Stable" 
+    },
+    warning: { 
+      style: "bg-amber-500/15 text-amber-600 border-amber-500/30 hover:bg-amber-500/25", 
+      label: "Warning" 
+    },
+    alert: { 
+      style: "bg-orange-500/15 text-orange-600 border-orange-500/30 hover:bg-orange-500/25", 
+      label: "Alert" 
+    },
+    critical: { 
+      style: "bg-red-600/15 text-red-700 border-red-600/30 hover:bg-red-600/25", 
+      label: "Critical" 
+    },
+    
+    // Fallback
+    unknown: { 
+      style: "bg-slate-500/15 text-slate-600 border-slate-500/30", 
+      label: status || "Unknown" 
+    },
   };
 
-  const config = statusConfig[status];
-  const sizeStyles = size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm";
+  // Safely select the style, falling back to 'unknown' if the status key is missing
+  const selection = config[normalizedStatus] || config.unknown;
 
   return (
-    <span
+    <Badge 
+      variant="outline" 
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium",
-        config.bg,
-        config.text,
-        sizeStyles
+        "font-medium border px-2.5 py-0.5 transition-colors", 
+        selection.style,
+        size === "sm" && "text-xs px-2 py-0",
+        size === "lg" && "text-sm px-3 py-1"
       )}
     >
-      <span className="relative flex h-2 w-2">
-        {pulse && (
-          <span
-            className={cn(
-              "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
-              config.dot
-            )}
-          />
-        )}
-        <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dot)} />
-      </span>
-      {children || (status.charAt(0).toUpperCase() + status.slice(1))}
-    </span>
+      {selection.label}
+    </Badge>
   );
-};
+}
