@@ -84,7 +84,7 @@ export const Navbar = () => {
             <Link
               to="/auth"
               onClick={() => setIsOpen(false)}
-              className="block py-3 px-4 mt-2 bg-gradient-to-r from-primary to-accent text-white text-center font-semibold rounded-xl"
+              className="block py-3 px-4 mt-2 bg-cyan-600 text-white text-center font-semibold rounded-xl mb-2"
             >
               Login / Sign Up
             </Link>

@@ -33,25 +33,29 @@ const createPulsingIcon = (status: string) => {
   });
 };
 
-export const InteractiveMap = () => {
+// FIX: Added interface for Props
+interface InteractiveMapProps {
+  showLegend?: boolean;
+  className?: string; // Optional for custom sizing if needed
+}
+
+export const InteractiveMap = ({ showLegend = true, className }: InteractiveMapProps) => {
   return (
-    <div className="relative w-full h-full min-h-[400px] rounded-xl overflow-hidden glass-card shadow-xl border border-white/5 z-0">
+    <div className={`relative w-full h-full min-h-[400px] rounded-xl overflow-hidden glass-card shadow-xl border border-white/5 z-0 ${className}`}>
       
       <MapContainer 
         center={[23.78, 90.40]} 
         zoom={12} 
         scrollWheelZoom={true} 
-        zoomControl={false} // Disable default top-left zoom
-        attributionControl={false} // Remove watermark
+        zoomControl={false} 
+        attributionControl={false} 
         className="w-full h-full z-0"
         style={{ background: '#020617' }} 
       >
-        {/* Dark Matter Tiles */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
 
-        {/* FIX: Correct position name is "bottomright" (no hyphen) */}
         <ZoomControl position="bottomright" />
 
         {sensorLocations.map((sensor) => (
@@ -105,23 +109,25 @@ export const InteractiveMap = () => {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-[400] pointer-events-auto">
-        <div className="glass-card px-3 py-2 rounded-lg border border-white/10 shadow-xl bg-black/60 backdrop-blur-md flex gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Safe</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Warning</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Critical</span>
+      {/* FIX: Conditional Legend Rendering */}
+      {showLegend && (
+        <div className="absolute bottom-4 left-4 z-[400] pointer-events-auto">
+          <div className="glass-card px-3 py-2 rounded-lg border border-white/10 shadow-xl bg-black/60 backdrop-blur-md flex gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Safe</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Warning</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Critical</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

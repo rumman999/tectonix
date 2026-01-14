@@ -14,6 +14,8 @@ import RescueCoordinator from "./pages/RescueCoordinator";
 import NotFound from "./pages/NotFound";
 //import ProtectedRoute from "./components/ProtectedRoute";
 import BeaconView from "@/components/dashboard/BeaconView";
+import BuildingManager from "./pages/BuildingManager"
+import Settings from "./pages/Settings"
 
 const queryClient = new QueryClient();
 
@@ -33,6 +35,8 @@ const App = () => (
           <Route path="/report" element={<DamageReport />} />
           <Route path="/rescue" element={<RescueCoordinator />} />
           <Route path="/beacon" element={<BeaconView />} />
+          <Route path="/buildings" element={<BuildingManager />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

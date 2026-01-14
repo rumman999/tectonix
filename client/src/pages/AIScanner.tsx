@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { GlowButton } from "@/components/ui/GlowButton";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"; //
+import { GlowButton } from "@/components/ui/GlowButton"; //
+import { GlassCard } from "@/components/ui/GlassCard"; //
 import {
   Upload,
   ScanLine,
@@ -12,8 +12,12 @@ import {
   Loader2,
   FileImage,
   X,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"; //
+import { Button } from "@/components/ui/button"; //
 
 type ScanState = "idle" | "uploading" | "scanning" | "complete";
 
@@ -91,14 +95,38 @@ const AIScanner = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar />
+      
+      {/* --- MOBILE HEADER --- */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-50">
+        <div className="flex items-center gap-2 font-bold text-lg">
+            <ScanLine className="text-primary h-6 w-6" />
+            <span>AI Scanner</span>
+        </div>
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon"><Menu /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64 border-r [&>button]:hidden">
+                <SheetTitle className="hidden">Navigation</SheetTitle>
+                <DashboardSidebar />
+            </SheetContent>
+        </Sheet>
+      </div>
 
-      <main className="ml-64 p-6">
+      {/* --- DESKTOP SIDEBAR --- */}
+      {/* FIX: Force fixed positioning to prevent pushing content down */}
+      <div className="hidden md:block fixed left-0 top-0 bottom-0 z-50 w-64">
+        <DashboardSidebar />
+      </div>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="md:ml-64 p-6 transition-all duration-300">
+        
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-6 md:mb-8" // Slightly tighter spacing
         >
           <div className="flex items-center gap-3 mb-2">
             <ScanLine className="h-8 w-8 text-primary" />
@@ -111,7 +139,9 @@ const AIScanner = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Grid Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          
           {/* Upload Area */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -165,7 +195,6 @@ const AIScanner = () => {
                     Supports: JPG, PNG, WEBP (Max 10MB)
                   </p>
 
-                  {/* Dashed Border */}
                   <div className="absolute inset-4 border-2 border-dashed border-muted-foreground/30 rounded-xl pointer-events-none" />
                 </>
               ) : (

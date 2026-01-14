@@ -5,16 +5,18 @@ import { SeismicChart } from "@/components/dashboard/SeismicChart";
 import { RiskDistributionChart } from "@/components/dashboard/RiskDistributionChart";
 import { AlertFeed } from "@/components/dashboard/AlertFeed";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Radio, Building2, AlertTriangle, Activity } from "lucide-react";
+import { Radio, Building2, AlertTriangle, Activity, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Interface for the data we expect from the backend
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+
 interface DashboardStats {
   sensors: number;
   buildings: number;
   alerts: number;
-  network_health: string;
+  network_health: string | number;
 }
 
 interface SeismicLog {
@@ -30,7 +32,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<{ full_name: string; role_type: string } | null>(null);
   
-  // State for dynamic data
   const [statsData, setStatsData] = useState<DashboardStats>({
     sensors: 0,
     buildings: 0,
@@ -41,26 +42,24 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Load User Info
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
 
-    // 2. Fetch Dashboard Data
     const fetchData = async () => {
       try {
-        // Fetch Stats
-        const statsRes = await fetch("/api/dashboard/stats");
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        const statsRes = await fetch("/api/dashboard/stats", { headers });
         const statsJson = await statsRes.json();
         
-        // Fetch Logs
-        const logsRes = await fetch("/api/dashboard/logs");
+        const logsRes = await fetch("/api/dashboard/logs", { headers });
         const logsJson = await logsRes.json();
 
         if (statsRes.ok) setStatsData(statsJson);
         if (logsRes.ok) setRecentLogs(logsJson);
-        
       } catch (error) {
         console.error("Failed to load dashboard data", error);
       } finally {
@@ -71,7 +70,6 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Map the database values to your UI configuration
   const stats = [
     { 
       icon: Radio, 
@@ -94,16 +92,40 @@ const Dashboard = () => {
     { 
       icon: Activity, 
       label: "Network Health", 
-      value: statsData.network_health, 
+      value: typeof statsData.network_health === 'number' ? `${statsData.network_health}%` : statsData.network_health, 
       change: "+0.1%" 
     },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar />
+      
+      {/* --- MOBILE HEADER (Visible only on small screens) --- */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-50">
+        <div className="flex items-center gap-2 font-bold text-lg">
+            <Activity className="text-primary h-6 w-6" />
+            <span>Tectonix</span>
+        </div>
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon"><Menu /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64 border-r [&>button]:hidden">
+                <SheetTitle className="hidden">Navigation</SheetTitle>
+                <DashboardSidebar />
+            </SheetContent>
+        </Sheet>
+      </div>
 
-      <main className="ml-64 p-6">
+      {/* --- DESKTOP SIDEBAR --- */}
+      {/* FIX: Force fixed positioning so it doesn't push main content down */}
+      <div className="hidden md:block fixed left-0 top-0 bottom-0 z-50 w-64">
+         <DashboardSidebar />
+      </div>
+
+      {/* --- MAIN CONTENT --- */}
+      <main className="md:ml-64 p-4 md:p-6 transition-all duration-300">
+        
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -138,7 +160,6 @@ const Dashboard = () => {
                     <span className="text-2xl font-bold text-foreground">
                       {loading ? "..." : stat.value}
                     </span>
-                    {/* You can make 'change' dynamic later if you store historical data */}
                     <span className="text-xs text-success">{stat.change}</span>
                   </div>
                 </div>
@@ -149,7 +170,7 @@ const Dashboard = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-6">
-          {/* Map - Large */}
+          {/* Map */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -222,37 +243,23 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-{/* Render Real Logs or a "No Data" message */}
-{recentLogs.length > 0 ? (
-  recentLogs.map((log) => (
-    <tr
-      key={log.id}
-      className="border-b border-white/5 hover:bg-muted/20 transition-colors"
-    >
-      <td className="py-3 px-4 text-sm font-medium text-foreground">
-        {log.sensor}
-      </td>
-      <td className="py-3 px-4 text-sm text-muted-foreground">
-        {log.location}
-      </td>
-      <td className="py-3 px-4">
-        <StatusBadge status={log.status as any} size="sm" />
-      </td>
-      <td className="py-3 px-4 text-sm text-foreground">
-        {log.magnitude}g
-      </td>
-      <td className="py-3 px-4 text-sm text-muted-foreground">
-        {new Date(log.timestamp).toLocaleTimeString()}
-      </td>
-    </tr>
-  ))
-) : (
-  <tr>
-    <td colSpan={5} className="py-6 text-center text-muted-foreground">
-      {loading ? "Loading logs..." : "No recent seismic activity detected."}
-    </td>
-  </tr>
-)}
+                    {recentLogs.length > 0 ? (
+                      recentLogs.map((log) => (
+                        <tr key={log.id} className="border-b border-white/5 hover:bg-muted/20 transition-colors">
+                          <td className="py-3 px-4 text-sm font-medium text-foreground">{log.sensor}</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">{log.location}</td>
+                          <td className="py-3 px-4"><StatusBadge status={log.status as any} size="sm" /></td>
+                          <td className="py-3 px-4 text-sm text-foreground">{log.magnitude}g</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                          {loading ? "Loading logs..." : "No recent seismic activity detected."}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
