@@ -51,11 +51,11 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         // Fetch Stats
-        const statsRes = await fetch("http://localhost:5000/api/dashboard/stats");
+        const statsRes = await fetch("/api/dashboard/stats");
         const statsJson = await statsRes.json();
         
         // Fetch Logs
-        const logsRes = await fetch("http://localhost:5000/api/dashboard/logs");
+        const logsRes = await fetch("/api/dashboard/logs");
         const logsJson = await logsRes.json();
 
         if (statsRes.ok) setStatsData(statsJson);

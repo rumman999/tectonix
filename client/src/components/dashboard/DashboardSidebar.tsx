@@ -21,7 +21,7 @@ import { useNavigate } from "react-router-dom"; // <--- 2. Import useNavigate
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Radio, label: "Seismic Mode", href: "#" }, //seismic
+  { icon: Radio, label: "Seismic Mode", href: "/seismic" }, //seismic
   { icon: ScanLine, label: "AI Scanner", href: "#" }, //scanner
   { icon: Calculator, label: "Retrofit Calc", href: "#" }, //retrofit
   { icon: FileWarning, label: "Report Damage", href: "#" }, // report

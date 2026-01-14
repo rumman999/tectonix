@@ -93,8 +93,8 @@ export const Auth = () => {
 
     // 1. Determine URL
     const endpoint = isLogin
-      ? "http://localhost:5000/api/auth/login"
-      : "http://localhost:5000/api/auth/register";
+      ? "/api/auth/login"
+      : "/api/auth/register";
 
     // 2. Map Frontend State -> Backend Database Columns
     // Backend expects: "Specialist" (Capitalized), Frontend has: "specialist" (lowercase)

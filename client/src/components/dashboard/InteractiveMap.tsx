@@ -1,134 +1,126 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { mapPins } from "@/data/mockData";
-import { cn } from "@/lib/utils";
-import cityMap from "@/assets/city-map-3d.jpg";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, ZoomControl } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Real GPS coordinates for Dhaka sensors
+const sensorLocations = [
+  { id: 1, name: "Gulshan HQ", lat: 23.7925, lng: 90.4078, status: "safe" },
+  { id: 2, name: "Motijheel Hub", lat: 23.7330, lng: 90.4172, status: "warning" },
+  { id: 3, name: "Mirpur Station", lat: 23.8223, lng: 90.3654, status: "safe" },
+  { id: 4, name: "Dhanmondi Unit", lat: 23.7461, lng: 90.3742, status: "danger" },
+  { id: 5, name: "Uttara North", lat: 23.8728, lng: 90.3984, status: "safe" },
+];
+
+// Custom pulsing icon logic
+const createPulsingIcon = (status: string) => {
+  let colorClass = "bg-gray-500";
+  let glowClass = "shadow-gray-500/50";
+  
+  if (status === "safe") { colorClass = "bg-emerald-500"; glowClass = "shadow-emerald-500/50"; }
+  if (status === "warning") { colorClass = "bg-amber-500"; glowClass = "shadow-amber-500/50"; }
+  if (status === "danger") { colorClass = "bg-red-500"; glowClass = "shadow-red-500/50"; }
+
+  return L.divIcon({
+    className: "custom-icon-marker", 
+    html: `
+      <div class="relative flex items-center justify-center w-8 h-8">
+        <span class="absolute w-full h-full rounded-full opacity-40 animate-ping ${colorClass}"></span>
+        <span class="relative w-3.5 h-3.5 border-2 border-[#020617] rounded-full shadow-[0_0_15px] ${glowClass} ${colorClass}"></span>
+      </div>
+    `,
+    iconSize: [32, 32], 
+    iconAnchor: [16, 16], 
+  });
+};
 
 export const InteractiveMap = () => {
-  const [hoveredPin, setHoveredPin] = useState<number | null>(null);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "safe":
-        return "bg-success";
-      case "warning":
-        return "bg-warning";
-      case "danger":
-        return "bg-destructive";
-      default:
-        return "bg-muted";
-    }
-  };
-
-  const getStatusGlow = (status: string) => {
-    switch (status) {
-      case "safe":
-        return "shadow-[0_0_20px_rgba(34,197,94,0.5)]";
-      case "warning":
-        return "shadow-[0_0_20px_rgba(234,179,8,0.5)]";
-      case "danger":
-        return "shadow-[0_0_20px_rgba(239,68,68,0.5)]";
-      default:
-        return "";
-    }
-  };
-
   return (
-    <div className="relative w-full h-full min-h-[400px] rounded-xl overflow-hidden glass-card">
-      {/* Map Image */}
-      <img
-        src={cityMap}
-        alt="3D Subsurface Map of Dhaka"
-        className="w-full h-full object-cover"
-      />
+    <div className="relative w-full h-full min-h-[400px] rounded-xl overflow-hidden glass-card shadow-xl border border-white/5 z-0">
+      
+      <MapContainer 
+        center={[23.78, 90.40]} 
+        zoom={12} 
+        scrollWheelZoom={true} 
+        zoomControl={false} // Disable default top-left zoom
+        attributionControl={false} // Remove watermark
+        className="w-full h-full z-0"
+        style={{ background: '#020617' }} 
+      >
+        {/* Dark Matter Tiles */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        />
 
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+        {/* FIX: Correct position name is "bottomright" (no hyphen) */}
+        <ZoomControl position="bottomright" />
 
-      {/* Status Pins */}
-      {mapPins.map((pin) => (
-        <motion.div
-          key={pin.id}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: pin.id * 0.1, type: "spring", stiffness: 300 }}
-          className="absolute"
-          style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-          onMouseEnter={() => setHoveredPin(pin.id)}
-          onMouseLeave={() => setHoveredPin(null)}
-        >
-          {/* Pin */}
-          <div className="relative cursor-pointer">
-            <div
-              className={cn(
-                "w-4 h-4 rounded-full transition-all duration-300",
-                getStatusColor(pin.status),
-                getStatusGlow(pin.status),
-                hoveredPin === pin.id && "scale-150"
-              )}
-            />
-            {/* Pulse Ring */}
-            <div
-              className={cn(
-                "absolute inset-0 w-4 h-4 rounded-full animate-ping opacity-50",
-                getStatusColor(pin.status)
-              )}
-            />
-          </div>
+        {sensorLocations.map((sensor) => (
+          <Marker
+            key={sensor.id}
+            position={[sensor.lat, sensor.lng]}
+            icon={createPulsingIcon(sensor.status)}
+          >
+            <Tooltip 
+              direction="top" 
+              offset={[0, -20]} 
+              opacity={1} 
+              className="!bg-[#0f172a] !text-white !border !border-white/10 !rounded-md !px-3 !py-1 !shadow-xl font-sans text-xs"
+            >
+              {sensor.name}
+            </Tooltip>
 
-          {/* Tooltip */}
-          <AnimatePresence>
-            {hoveredPin === pin.id && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                className="absolute left-1/2 -translate-x-1/2 -top-16 z-10"
-              >
-                <div className="glass-card px-3 py-2 rounded-lg whitespace-nowrap">
-                  <div className="text-sm font-semibold text-foreground">
-                    {pin.label}
-                  </div>
-                  <div className="text-xs text-muted-foreground capitalize">
-                    Status: {pin.status}
-                  </div>
+            <Popup className="glass-popup">
+              <div className="p-1 min-w-[160px]">
+                <div className={`h-1 w-full rounded-full mb-3 ${
+                  sensor.status === 'safe' ? 'bg-emerald-500' : 
+                  sensor.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
+                }`} />
+                <h3 className="font-bold text-slate-800 text-lg mb-1">{sensor.name}</h3>
+                <div className="flex justify-between items-center text-sm text-slate-500 mt-2">
+                  <span>ID: <span className="font-mono text-slate-700">#{sensor.id}</span></span>
+                  <span className={`font-bold text-xs px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    sensor.status === 'safe' ? 'bg-emerald-100 text-emerald-700' : 
+                    sensor.status === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {sensor.status}
+                  </span>
                 </div>
-                <div className="w-2 h-2 bg-card rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      ))}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
 
-      {/* Map Legend */}
-      <div className="absolute bottom-4 left-4 glass-card px-4 py-3 rounded-lg">
-        <div className="text-xs font-medium text-muted-foreground mb-2">
-          Sensor Status
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-success" />
-            <span className="text-xs text-foreground">Safe</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-warning" />
-            <span className="text-xs text-foreground">Warning</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-destructive" />
-            <span className="text-xs text-foreground">Danger</span>
-          </div>
+      {/* Floating Title Card */}
+      <div className="absolute top-4 left-4 z-[400] pointer-events-none">
+        <div className="glass-card px-4 py-2.5 rounded-lg border border-white/10 shadow-2xl bg-black/40 backdrop-blur-md">
+          <h3 className="text-sm font-bold text-white flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black/50"></span>
+            </span>
+            Live Sensor Network
+          </h3>
+          <p className="text-[10px] text-slate-400 ml-5 mt-0.5">Real-time GPS Tracking</p>
         </div>
       </div>
 
-      {/* Title */}
-      <div className="absolute top-4 left-4">
-        <h3 className="text-lg font-semibold text-foreground">
-          3D Subsurface Map
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Real-time sensor network visualization
-        </p>
+      {/* Legend */}
+      <div className="absolute bottom-4 left-4 z-[400] pointer-events-auto">
+        <div className="glass-card px-3 py-2 rounded-lg border border-white/10 shadow-xl bg-black/60 backdrop-blur-md flex gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Safe</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Warning</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">Critical</span>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,225 +1,251 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import api from "@/lib/axios";
+import { motion, AnimatePresence } from "framer-motion";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { Activity, AlertTriangle, Gauge, Radio, Waves } from "lucide-react";
+import { Activity, Radio, Smartphone, Settings2, Menu, ShieldAlert, Waves } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+// FIX: Imported SheetTitle to solve the accessibility error
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+
+// Helper for Persistent ID
+const getClientId = () => {
+  let uuid = localStorage.getItem("seismic_client_uuid");
+  if (!uuid) {
+    uuid = crypto.randomUUID();
+    localStorage.setItem("seismic_client_uuid", uuid);
+  }
+  return uuid;
+};
 
 const SeismicMode = () => {
-  const [pgaValue, setPgaValue] = useState(0.12);
-  const [isElevated, setIsElevated] = useState(false);
-  const [wavePhase, setWavePhase] = useState(0);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [debugLog, setDebugLog] = useState<string>("Ready...");
+  const [magnitude, setMagnitude] = useState(0);
+  const [threshold, setThreshold] = useState([1.5]); 
+  const [systemStatus, setSystemStatus] = useState("SAFE");
+  const [shakeCount, setShakeCount] = useState(0);
+  const [clientId, setClientId] = useState("");
+  
+  // Rate Limiting
+  const lastReportTime = useRef<number>(0);
+  const historyRef = useRef<number[]>(new Array(100).fill(0));
+  const [graphPath, setGraphPath] = useState("");
 
-  // Simulate PGA value changes
   useEffect(() => {
-    const interval = setInterval(() => {
-      const newValue = 0.1 + Math.random() * 0.6;
-      setPgaValue(parseFloat(newValue.toFixed(2)));
-      setIsElevated(newValue > 0.4);
-    }, 3000);
+    setClientId(getClientId());
 
+    const checkStatus = async () => {
+      try {
+        const res = await api.get("/dashboard/seismic/status");
+        if (res.data.status === "CRITICAL") {
+            setSystemStatus("CRITICAL");
+        } else {
+            setSystemStatus("SAFE");
+        }
+      } catch (err) { console.error("Polling error", err); }
+    };
+
+    const interval = setInterval(checkStatus, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  // Animate wave phase
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setWavePhase((prev) => (prev + 1) % 360);
-    }, 50);
+  const reportShake = async (mag: number) => {
+    const now = Date.now();
+    if (now - lastReportTime.current < 5000) return;
+    lastReportTime.current = now;
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const getStatusColor = () => {
-    if (pgaValue >= 0.5) return { bg: "bg-destructive", text: "text-destructive", glow: "shadow-[0_0_60px_rgba(239,68,68,0.5)]" };
-    if (pgaValue >= 0.3) return { bg: "bg-warning", text: "text-warning", glow: "shadow-[0_0_60px_rgba(234,179,8,0.5)]" };
-    return { bg: "bg-success", text: "text-success", glow: "shadow-[0_0_60px_rgba(34,197,94,0.5)]" };
+    try {
+        const payload = { 
+            lat: 23.8103, 
+            lng: 90.4125, 
+            magnitude: mag,
+            client_uuid: clientId 
+        };
+        await api.post("/dashboard/seismic/report", payload);
+        setDebugLog(`🚀 Sent: ${mag.toFixed(2)}g`);
+        setShakeCount(prev => prev + 1);
+    } catch (err: any) {
+        setDebugLog("❌ " + err.message);
+    }
   };
 
-  const status = getStatusColor();
-
-  // Generate seismograph wave path
-  const generateWavePath = () => {
-    const points: string[] = [];
-    const width = 800;
-    const height = 200;
-    const centerY = height / 2;
-    
-    for (let x = 0; x <= width; x += 2) {
-      const normalWave = Math.sin((x + wavePhase * 2) / 30) * 10;
-      const spike = Math.sin((x + wavePhase * 3) / 15) * (isElevated ? 60 : 20);
-      const noise = (Math.random() - 0.5) * (isElevated ? 20 : 5);
-      const y = centerY + normalWave + spike + noise;
-      points.push(`${x === 0 ? "M" : "L"} ${x} ${y}`);
+  const handleDismiss = async () => {
+    try {
+      await api.post("/dashboard/seismic/resolve");
+      setSystemStatus("SAFE"); 
+      setShakeCount(0);
+    } catch (err) {
+      console.error("Failed to resolve", err);
     }
-    return points.join(" ");
+  };
+
+  const updateGraph = (mag: number) => {
+    historyRef.current.push(mag);
+    if (historyRef.current.length > 100) historyRef.current.shift();
+    const width = 800; const height = 150; const step = width / 100;
+    const path = historyRef.current.map((val, i) => {
+        const y = height - (val * height * 5); 
+        return `${i === 0 ? "M" : "L"} ${i * step} ${Math.max(0, Math.min(height, y))}`;
+    }).join(" ");
+    setGraphPath(path);
+  };
+
+  const startMonitoring = async () => {
+    setIsMonitoring(true);
+    setDebugLog("Active");
+    if ('Accelerometer' in window) {
+      try {
+        // @ts-ignore
+        const sensor = new Accelerometer({ frequency: 60 });
+        sensor.addEventListener('reading', () => {
+            const mag = Math.sqrt(sensor.x**2 + sensor.y**2 + sensor.z**2) / 9.8;
+            handleReading(mag);
+        });
+        sensor.start();
+        return;
+      } catch (e) { console.log("Android API failed"); }
+    }
+    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+      await (DeviceMotionEvent as any).requestPermission();
+    }
+    window.addEventListener("devicemotion", (event) => {
+      const acc = event.accelerationIncludingGravity || event.acceleration; 
+      if (!acc) return;
+      const mag = Math.sqrt((acc.x||0)**2 + (acc.y||0)**2 + (acc.z||0)**2) / 9.8;
+      handleReading(Math.abs(mag - 1));
+    });
+  };
+
+  const handleReading = (mag: number) => {
+      setMagnitude(mag);
+      updateGraph(mag);
+      if (mag > threshold[0]) reportShake(mag); 
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardSidebar />
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col md:flex-row">
+      
+      {/* RED ALERT SCREEN */}
+      <AnimatePresence>
+        {systemStatus === "CRITICAL" && (
+            <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] bg-red-600 flex flex-col items-center justify-center text-center p-6"
+            >
+                <div className="animate-pulse flex flex-col items-center">
+                    <ShieldAlert size={120} className="text-white mb-6" />
+                    <h1 className="text-5xl font-black text-white mb-4">EARTHQUAKE</h1>
+                    <p className="text-white/90 text-xl">System Triggered by Crowd Data</p>
+                </div>
+                <Button 
+                    onClick={handleDismiss} 
+                    className="mt-16 bg-white text-red-600 hover:bg-white/90 font-bold px-10 py-8 text-2xl rounded-full shadow-2xl"
+                >
+                    I AM SAFE (STOP ALARM)
+                </Button>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
-      <main className="ml-64 p-6 min-h-screen flex flex-col">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <Waves className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">
-              Seismic Mode
+      {/* MOBILE HEADER */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur sticky top-0 z-50">
+        <div className="flex items-center gap-2 font-bold text-lg">
+            <Activity className="text-primary h-5 w-5" /> 
+            <span>SeismicMode</span>
+        </div>
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button>
+            </SheetTrigger>
+            
+            {/* FIX 2: Width adjusted to w-64 to match Sidebar. [&>button]:hidden removes the X icon. */}
+            <SheetContent side="left" className="w-64 p-0 border-r [&>button]:hidden">
+                {/* FIX 1: Accessibility Title (Hidden) */}
+                <SheetTitle className="hidden">Navigation Menu</SheetTitle>
+                <DashboardSidebar />
+            </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* DESKTOP SIDEBAR */}
+      <div className="hidden md:block w-64 border-r bg-background/50 h-screen sticky top-0">
+        <DashboardSidebar />
+      </div>
+
+      {/* MAIN CONTENT */}
+      <main className="flex-1 p-4 md:p-8 flex flex-col gap-6 w-full max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
+              <span className="hidden md:block"><Waves className="h-8 w-8 text-primary" /></span>
+              Crowd-Sourced Network
             </h1>
-            <motion.div
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="ml-4 px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm font-medium flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              LIVE
-            </motion.div>
+            <p className="text-sm text-muted-foreground mt-1 font-mono">
+              ID: {clientId.slice(0, 8)}...
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            Real-time seismograph visualization and ground acceleration monitoring
-          </p>
-        </motion.div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col gap-6">
-          {/* PGA Display */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-2xl p-8 text-center"
-          >
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Gauge className="h-6 w-6 text-muted-foreground" />
-              <span className="text-lg text-muted-foreground font-medium">
-                Peak Ground Acceleration
-              </span>
-            </div>
+          {!isMonitoring ? (
+            <Button size="lg" onClick={startMonitoring} className="w-full md:w-auto bg-primary text-white shadow-lg animate-pulse">
+              <Smartphone className="mr-2 h-5 w-5" /> Activate Sensor
+            </Button>
+          ) : (
+             <div className="w-full md:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-destructive/10 border border-destructive/20 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-destructive animate-ping" />
+                <span className="text-destructive font-bold text-sm tracking-wide">MONITORING</span>
+             </div>
+          )}
+        </div>
 
-            <motion.div
-              key={pgaValue}
-              initial={{ scale: 1.1 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              className={cn(
-                "inline-block px-12 py-6 rounded-2xl transition-all duration-500",
-                status.glow
-              )}
-            >
-              <span className={cn("text-8xl font-bold tabular-nums", status.text)}>
-                {pgaValue.toFixed(2)}
-              </span>
-              <span className={cn("text-4xl font-bold ml-2", status.text)}>g</span>
-            </motion.div>
+        <div className="glass-card p-3 rounded-xl border border-white/10 bg-black/40 font-mono text-[10px] md:text-xs text-green-400 overflow-hidden text-ellipsis whitespace-nowrap">
+           <span className="opacity-50 mr-2">{new Date().toLocaleTimeString()}</span>
+           {">"} {debugLog}
+        </div>
 
-            <div className="mt-6 flex items-center justify-center gap-8">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-success" />
-                <span className="text-sm text-muted-foreground">Safe (&lt;0.3g)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-warning" />
-                <span className="text-sm text-muted-foreground">Moderate (0.3-0.5g)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-destructive" />
-                <span className="text-sm text-muted-foreground">Critical (&gt;0.5g)</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Seismograph */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-card rounded-2xl p-6 flex-1"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold text-foreground">
-                  Live Seismograph
-                </h3>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Radio className="h-4 w-4 text-primary animate-pulse" />
-                  <span className="text-sm text-muted-foreground">SEN-287 Active</span>
+        <div className="glass-card rounded-2xl p-4 md:p-6 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
+            <div className="flex justify-between items-start z-10">
+                <div><h3 className="text-lg font-semibold text-foreground">Live Seismograph</h3></div>
+                <div className="text-right">
+                    <div className={cn("text-3xl font-mono font-bold tabular-nums transition-colors", magnitude > threshold[0] ? "text-destructive" : "text-primary")}>
+                        {magnitude.toFixed(2)}g
+                    </div>
                 </div>
-                {isElevated && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20"
-                  >
-                    <AlertTriangle className="h-4 w-4 text-accent" />
-                    <span className="text-sm text-accent font-medium">Elevated Activity</span>
-                  </motion.div>
-                )}
-              </div>
             </div>
-
-            <div className="relative h-[250px] bg-muted/20 rounded-xl overflow-hidden">
-              {/* Grid Lines */}
-              <div className="absolute inset-0">
-                {[...Array(10)].map((_, i) => (
-                  <div
-                    key={`h-${i}`}
-                    className="absolute w-full border-t border-primary/10"
-                    style={{ top: `${(i + 1) * 10}%` }}
-                  />
-                ))}
-                {[...Array(20)].map((_, i) => (
-                  <div
-                    key={`v-${i}`}
-                    className="absolute h-full border-l border-primary/10"
-                    style={{ left: `${(i + 1) * 5}%` }}
-                  />
-                ))}
-              </div>
-
-              {/* Center Line */}
-              <div className="absolute top-1/2 left-0 right-0 border-t border-primary/30" />
-
-              {/* Wave */}
-              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                <path
-                  d={generateWavePath()}
-                  fill="none"
-                  stroke={isElevated ? "hsl(24, 95%, 53%)" : "hsl(187, 92%, 50%)"}
-                  strokeWidth="2"
-                  className="drop-shadow-[0_0_8px_currentColor]"
-                />
-              </svg>
-
-              {/* Glow Effect */}
-              <div
-                className={cn(
-                  "absolute inset-0 bg-gradient-radial-primary opacity-30 transition-opacity duration-500",
-                  isElevated && "opacity-50 bg-gradient-radial-accent"
-                )}
-              />
+            <div className="relative h-[100px] w-full mt-4 bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                    <path d={graphPath} fill="none" stroke={magnitude > threshold[0] ? "#ef4444" : "#22c55e"} strokeWidth="2" />
+                </svg>
             </div>
+        </div>
 
-            {/* Stats Row */}
-            <div className="grid grid-cols-4 gap-4 mt-6">
-              {[
-                { label: "Frequency", value: "2.4 Hz" },
-                { label: "Amplitude", value: `${(pgaValue * 100).toFixed(0)} mm/s²` },
-                { label: "Duration", value: "00:45:32" },
-                { label: "Depth", value: "15 km" },
-              ].map((stat) => (
-                <div key={stat.label} className="text-center p-3 rounded-lg bg-muted/20">
-                  <div className="text-xs text-muted-foreground mb-1">{stat.label}</div>
-                  <div className="text-lg font-semibold text-foreground">{stat.value}</div>
-                </div>
-              ))}
+        <div className={cn("glass-card rounded-2xl p-6 flex flex-col items-center text-center transition-all duration-300 border-2", magnitude > threshold[0] ? "bg-destructive/10 border-destructive shadow-lg" : "border-transparent")}>
+            {magnitude > threshold[0] ? (
+                <>
+                    <Radio className="h-12 w-12 text-destructive animate-ping mb-2" />
+                    <h2 className="text-xl font-bold text-destructive">VIBRATION DETECTED</h2>
+                    <p className="text-destructive/80 text-sm">Sending data to Tectonix Cloud...</p>
+                </>
+            ) : (
+                <>
+                    <Activity className="h-12 w-12 text-primary/50 mb-2" />
+                    <h2 className="text-lg font-bold text-foreground">Standing By</h2>
+                    <p className="text-muted-foreground text-sm">Local Reports Sent: {shakeCount}</p>
+                </>
+            )}
+        </div>
+
+        <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+                <Settings2 className="h-5 w-5 text-primary" />
+                <h3 className="font-medium text-foreground">Sensor Sensitivity</h3>
             </div>
-          </motion.div>
+            <Slider value={threshold} onValueChange={setThreshold} max={3.0} step={0.1} className="my-4" />
+            <div className="flex justify-between text-xs text-muted-foreground px-1">
+                <span>Sensitive (Walking)</span>
+                <span>Hard Shake (Earthquake)</span>
+            </div>
         </div>
       </main>
     </div>
