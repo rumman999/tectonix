@@ -4,30 +4,100 @@ import { InteractiveMap } from "@/components/dashboard/InteractiveMap";
 import { SeismicChart } from "@/components/dashboard/SeismicChart";
 import { RiskDistributionChart } from "@/components/dashboard/RiskDistributionChart";
 import { AlertFeed } from "@/components/dashboard/AlertFeed";
-import { seismicLogs } from "@/data/mockData";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Radio, Building2, AlertTriangle, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Interface for the data we expect from the backend
+interface DashboardStats {
+  sensors: number;
+  buildings: number;
+  alerts: number;
+  network_health: string;
+}
+
+interface SeismicLog {
+  id: number;
+  sensor: string;
+  location: string;
+  status: "Active" | "Critical" | "Maintenance";
+  magnitude: number;
+  timestamp: string;
+}
 
 const Dashboard = () => {
-  const stats = [
-    { icon: Radio, label: "Active Sensors", value: "2,456", change: "+12" },
-    { icon: Building2, label: "Buildings Monitored", value: "15,234", change: "+89" },
-    { icon: AlertTriangle, label: "Active Alerts", value: "3", change: "-2" },
-    { icon: Activity, label: "Network Health", value: "99.8%", change: "+0.1%" },
-  ];
-
   const navigate = useNavigate();
   const [user, setUser] = useState<{ full_name: string; role_type: string } | null>(null);
+  
+  // State for dynamic data
+  const [statsData, setStatsData] = useState<DashboardStats>({
+    sensors: 0,
+    buildings: 0,
+    alerts: 0,
+    network_health: "Loading..."
+  });
+  const [recentLogs, setRecentLogs] = useState<SeismicLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Load User Info
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
+    // 2. Fetch Dashboard Data
+    const fetchData = async () => {
+      try {
+        // Fetch Stats
+        const statsRes = await fetch("http://localhost:5000/api/dashboard/stats");
+        const statsJson = await statsRes.json();
+        
+        // Fetch Logs
+        const logsRes = await fetch("http://localhost:5000/api/dashboard/logs");
+        const logsJson = await logsRes.json();
+
+        if (statsRes.ok) setStatsData(statsJson);
+        if (logsRes.ok) setRecentLogs(logsJson);
+        
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
+
+  // Map the database values to your UI configuration
+  const stats = [
+    { 
+      icon: Radio, 
+      label: "Active Sensors", 
+      value: statsData.sensors.toLocaleString(), 
+      change: "+12" 
+    },
+    { 
+      icon: Building2, 
+      label: "Buildings Monitored", 
+      value: statsData.buildings.toLocaleString(), 
+      change: "+89" 
+    },
+    { 
+      icon: AlertTriangle, 
+      label: "Active Alerts", 
+      value: statsData.alerts.toString(), 
+      change: "-2" 
+    },
+    { 
+      icon: Activity, 
+      label: "Network Health", 
+      value: statsData.network_health, 
+      change: "+0.1%" 
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,17 +111,15 @@ const Dashboard = () => {
           className="mb-8"
         >
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {/* Command Center */}
             Welcome,
           </h1>
           <p className="text-muted-foreground">
-            {/* Real-time seismic monitoring and risk assessment for Dhaka Metropolitan */}
             <span className="font-semibold text-primary">{user?.full_name || "User"}</span> ({user?.role_type})
           </p>
         </motion.div>
 
         {/* Stats Row */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -68,15 +136,16 @@ const Dashboard = () => {
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-foreground">
-                      {stat.value}
+                      {loading ? "..." : stat.value}
                     </span>
+                    {/* You can make 'change' dynamic later if you store historical data */}
                     <span className="text-xs text-success">{stat.change}</span>
                   </div>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div> */}
+        </div> 
 
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-6">
@@ -87,7 +156,7 @@ const Dashboard = () => {
             transition={{ delay: 0.2 }}
             className="col-span-12 lg:col-span-8 h-[400px]"
           >
-            {/* <InteractiveMap /> */}
+            <InteractiveMap />
           </motion.div>
 
           {/* Alert Feed */}
@@ -97,31 +166,31 @@ const Dashboard = () => {
             transition={{ delay: 0.3 }}
             className="col-span-12 lg:col-span-4"
           >
-            {/* <AlertFeed /> */}
+            <AlertFeed />
           </motion.div>
 
           {/* Seismic Chart */}
-          {/* <motion.div
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="col-span-12 lg:col-span-8"
           >
             <SeismicChart />
-          </motion.div> */}
+          </motion.div> 
 
           {/* Risk Distribution */}
-          {/* <motion.div
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             className="col-span-12 lg:col-span-4"
           >
             <RiskDistributionChart />
-          </motion.div> */}
+          </motion.div> 
 
           {/* Sensor Log Table */}
-          {/* <motion.div
+           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
@@ -153,33 +222,42 @@ const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {seismicLogs.map((log) => (
-                      <tr
-                        key={log.id}
-                        className="border-b border-white/5 hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-sm font-medium text-foreground">
-                          {log.sensor}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {log.location}
-                        </td>
-                        <td className="py-3 px-4">
-                          <StatusBadge status={log.status as any} size="sm" />
-                        </td>
-                        <td className="py-3 px-4 text-sm text-foreground">
-                          {log.magnitude}g
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </td>
-                      </tr>
-                    ))}
+{/* Render Real Logs or a "No Data" message */}
+{recentLogs.length > 0 ? (
+  recentLogs.map((log) => (
+    <tr
+      key={log.id}
+      className="border-b border-white/5 hover:bg-muted/20 transition-colors"
+    >
+      <td className="py-3 px-4 text-sm font-medium text-foreground">
+        {log.sensor}
+      </td>
+      <td className="py-3 px-4 text-sm text-muted-foreground">
+        {log.location}
+      </td>
+      <td className="py-3 px-4">
+        <StatusBadge status={log.status as any} size="sm" />
+      </td>
+      <td className="py-3 px-4 text-sm text-foreground">
+        {log.magnitude}g
+      </td>
+      <td className="py-3 px-4 text-sm text-muted-foreground">
+        {new Date(log.timestamp).toLocaleTimeString()}
+      </td>
+    </tr>
+  ))
+) : (
+  <tr>
+    <td colSpan={5} className="py-6 text-center text-muted-foreground">
+      {loading ? "Loading logs..." : "No recent seismic activity detected."}
+    </td>
+  </tr>
+)}
                   </tbody>
                 </table>
               </div>
             </div>
-          </motion.div> */}
+          </motion.div>
         </div>
       </main>
     </div>

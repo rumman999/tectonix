@@ -1,10 +1,10 @@
 import express from 'express';
 import { createBeacon, getMyBeacons } from '../controllers/beaconController.js';
-import { verifyToken } from '../middleware/authMiddleware.js';
+
 
 const router = express.Router();
 
-router.post('/activate', verifyToken, createBeacon);
-router.get('/history', verifyToken, getMyBeacons);
+router.post('/activate', createBeacon);
+router.get('/history', getMyBeacons);
 
 export default router;

@@ -10,15 +10,14 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  LogOut,
+  Calculator,
+  FileWarning,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-
-import {
-  Calculator,
-  FileWarning,
-  Shield,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom"; // <--- 2. Import useNavigate
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -36,6 +35,13 @@ const menuItems = [
 ];
 
 export const DashboardSidebar = () => {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    // Remove the auth token from storage
+    localStorage.removeItem("token"); 
+    // Redirect user to the Auth/Login page
+    navigate("/auth");
+  };
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -102,6 +108,22 @@ export const DashboardSidebar = () => {
               </Link>
             );
           })}
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group",
+              "text-red-500 hover:bg-red-50 hover:text-red-600", // Distinct styling for Logout
+              // OR use this line below if you want it to look exactly like other links:
+              // "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground" 
+            )}
+          >
+            <LogOut
+              className="h-5 w-5 transition-transform duration-200 group-hover:scale-110"
+            />
+            {!collapsed && (
+              <span className="text-sm font-medium">Logout</span>
+            )}
+          </button>
         </nav>
 
         {/* Collapse Toggle */}
