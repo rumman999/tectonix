@@ -4,7 +4,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { InteractiveMap } from "@/components/dashboard/InteractiveMap"; // FIX: Import real map
+import { InteractiveMap } from "@/components/dashboard/InteractiveMap"; 
 import {
   Users,
   MapPin,
@@ -251,7 +251,6 @@ export const RescueCoordinator = () => {
           className="lg:hidden mb-6"
         >
           <GlassCard className="p-0 overflow-hidden h-[300px]" hover={false}>
-             {/* FIX: Using Real Map Component */}
              <InteractiveMap />
           </GlassCard>
         </motion.div>
@@ -265,7 +264,6 @@ export const RescueCoordinator = () => {
             className="lg:col-span-2"
           >
             <GlassCard className="p-0 overflow-hidden h-[400px]" hover={false}>
-              {/* FIX: Using Real Map Component */}
               <InteractiveMap />
             </GlassCard>
           </motion.div>
@@ -485,9 +483,10 @@ export const RescueCoordinator = () => {
         </div>
       </main>
 
-      {/* Deploy Team Modal */}
+      {/* Deploy Team Modal - FIXED MOBILE */}
       <Dialog open={showDeployModal} onOpenChange={setShowDeployModal}>
-        <DialogContent className="bg-card/95 backdrop-blur-xl border-white/10 max-w-md mx-4">
+        {/* FIX: Width, max-width, max-height, and overflow for mobile friendliness */}
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-white/10 w-[95%] max-w-md max-h-[85vh] overflow-y-auto rounded-xl p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
               <Rocket className="h-5 w-5 text-accent" />

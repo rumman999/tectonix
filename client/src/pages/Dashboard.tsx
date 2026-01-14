@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL, getHeaders } from "@/config"; // Import helper
 
 interface DashboardStats {
   sensors: number;
@@ -52,10 +53,10 @@ const Dashboard = () => {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const statsRes = await fetch("/api/dashboard/stats", { headers });
+        const statsRes = await fetch(`${API_BASE_URL}/api/dashboard/stats`, { headers });
         const statsJson = await statsRes.json();
-        
-        const logsRes = await fetch("/api/dashboard/logs", { headers });
+
+        const logsRes = await fetch(`${API_BASE_URL}/api/dashboard/logs`, { headers });
         const logsJson = await logsRes.json();
 
         if (statsRes.ok) setStatsData(statsJson);

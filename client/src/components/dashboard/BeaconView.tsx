@@ -37,15 +37,6 @@ export default function BeaconView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-  };
-
   const fetchHistory = async () => {
     try {
       const res = await axios.get("/api/beacons/history", getAuthHeaders());
