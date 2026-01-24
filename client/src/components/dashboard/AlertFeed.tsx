@@ -1,10 +1,42 @@
+import { useEffect, useState } from "react";
+import { API_BASE_URL } from "@/config";
 import { alertFeed } from "@/data/mockData";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { AlertTriangle, Bell, Info, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+
+interface Alert {
+  id: string;
+  type: "critical" | "alert" | "warning" | "info";
+  title: string;
+  time: string;
+  location: string;
+}
+
 export const AlertFeed = () => {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/dashboard/alerts`);
+        const data = await res.json();
+        if (res.ok) setAlerts(data);
+      } catch (err) {
+        console.error("Alerts fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   const getIcon = (type: string) => {
     switch (type) {
       case "critical":
@@ -39,12 +71,12 @@ export const AlertFeed = () => {
           Alert Feed
         </h3>
         <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full">
-          {alertFeed.length} alerts
+          {alerts.length} alerts
         </span>
       </div>
 
       <div className="space-y-3 max-h-[280px] overflow-y-auto pr-2">
-        {alertFeed.map((alert, index) => (
+        {alerts.map((alert, index) => (
           <motion.div
             key={alert.id}
             initial={{ opacity: 0, x: -10 }}

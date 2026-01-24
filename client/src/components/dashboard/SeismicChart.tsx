@@ -1,9 +1,32 @@
+import { useEffect, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from "recharts";
-import { seismicChartData } from "@/data/mockData";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Activity } from "lucide-react";
+import { API_BASE_URL } from "@/config";
+
+// Interface for our data
+interface ChartDataPoint {
+  time: string;
+  magnitude: number;
+}
 
 export const SeismicChart = () => {
+  const [data, setData] = useState<ChartDataPoint[]>([]);
+
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/dashboard/chart`);
+        const jsonData = await res.json();
+        if (res.ok) setData(jsonData);
+      } catch (err) {
+        console.error("Failed to load chart data", err);
+      }
+    };
+
+    fetchChartData();
+  }, []);
+
   return (
     <GlassCard className="h-full" hover={false}>
       <div className="flex items-center justify-between mb-4">
@@ -13,7 +36,7 @@ export const SeismicChart = () => {
             Recent Seismic Activity
           </h3>
           <p className="text-sm text-muted-foreground">
-            24-hour magnitude readings
+            24-hour magnitude readings (Live)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -26,18 +49,19 @@ export const SeismicChart = () => {
 
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={seismicChartData}>
+          <LineChart data={data}>
             <XAxis
               dataKey="time"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
+              tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
+              interval={4} // Show fewer labels to avoid crowding
             />
             <YAxis
               axisLine={false}
               tickLine={false}
               tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-              domain={[0, 0.6]}
+              domain={[0, 0.6]} // Fixed scale for better visibility
             />
             <Tooltip
               contentStyle={{
@@ -53,13 +77,14 @@ export const SeismicChart = () => {
               stroke="hsl(0, 84%, 60%)"
               strokeDasharray="5 5"
               strokeOpacity={0.5}
+              label={{ position: 'right', value: 'Danger', fill: 'hsl(0, 84%, 60%)', fontSize: 10 }}
             />
             <Line
               type="monotone"
               dataKey="magnitude"
               stroke="hsl(187, 92%, 50%)"
               strokeWidth={2}
-              dot={{ fill: "hsl(187, 92%, 50%)", strokeWidth: 0, r: 4 }}
+              dot={false} // Remove dots for cleaner look on many points
               activeDot={{
                 fill: "hsl(187, 92%, 50%)",
                 strokeWidth: 0,

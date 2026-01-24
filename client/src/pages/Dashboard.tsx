@@ -21,11 +21,11 @@ interface DashboardStats {
 }
 
 interface SeismicLog {
-  id: number;
+  id: string;      
   sensor: string;
   location: string;
-  status: "Active" | "Critical" | "Maintenance";
-  magnitude: number;
+  status: string;   
+  magnitude: string; 
   timestamp: string;
 }
 
@@ -76,13 +76,13 @@ const Dashboard = () => {
       icon: Radio, 
       label: "Active Sensors", 
       value: statsData.sensors.toLocaleString(), 
-      change: "+12" 
+      change: "+8" 
     },
     { 
       icon: Building2, 
       label: "Buildings Monitored", 
       value: statsData.buildings.toLocaleString(), 
-      change: "+89" 
+      change: "+3" 
     },
     { 
       icon: AlertTriangle, 

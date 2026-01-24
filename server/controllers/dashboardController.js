@@ -22,30 +22,127 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
-// --- GET RECENT LOGS ---
 export const getRecentLogs = async (req, res) => {
   try {
+    // 1. You MUST use ST_X and ST_Y to get coordinates from the geometry/geography column
+    // 2. Added the LATERAL JOIN to find the specific zone name
     const result = await pool.query(`
-      SELECT v.vibe_id, v.intensity_pga, v.detected_at, d.device_model 
+      SELECT 
+        v.vibe_id, 
+        v.intensity_pga, 
+        v.detected_at, 
+        d.device_model,
+        ST_X(v.location_gps::geometry) as lng, -- Extracts Longitude
+        ST_Y(v.location_gps::geometry) as lat, -- Extracts Latitude
+        z.zone_name
       FROM Seismic_Vibrations v
       LEFT JOIN Devices d ON v.device_id = d.device_id
-      ORDER BY v.detected_at DESC LIMIT 8
+      LEFT JOIN LATERAL (
+        SELECT zone_name FROM zones 
+        WHERE ST_Intersects(zones.boundary, v.location_gps::geography)
+        ORDER BY ST_Area(boundary) ASC 
+        LIMIT 1
+      ) z ON true
+      ORDER BY v.detected_at DESC 
+      LIMIT 15;
     `);
 
-    const logs = result.rows.map(row => ({
-      id: row.vibe_id,
-      sensor: row.device_model || "Unknown",
-      location: "Dhaka",
-      status: row.intensity_pga > 0.2 ? "alert" : "stable",
-      magnitude: parseFloat(row.intensity_pga).toFixed(2),
-      timestamp: row.detected_at
-    }));
+    const logs = result.rows.map(row => {
+      // Clean up the browser string
+      let sensorType = row.device_model || "Mobile Sensor";
+      if (sensorType.includes("Mozilla")) {
+        sensorType = sensorType.includes("Android") ? "Android Device" : 
+                     sensorType.includes("iPhone") ? "iOS Device" : "Web Browser";
+      }
+
+      return {
+        id: row.vibe_id.toString().substring(0, 8),
+        sensor: sensorType,
+        location: row.zone_name || "Unknown Zone",
+        // CRITICAL: You must include these so the map has coordinates!
+        lat: parseFloat(row.lat),
+        lng: parseFloat(row.lng),
+        status: row.intensity_pga > 1.0 ? "danger" : row.intensity_pga > 0.3 ? "warning" : "safe",
+        magnitude: parseFloat(row.intensity_pga).toFixed(2),
+        timestamp: row.detected_at
+      };
+    });
 
     res.json(logs);
   } catch (err) {
+    console.error("Logs Error:", err.message);
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+// --- GET RISK DISTRIBUTION ---
+export const getRiskDistribution = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        CASE 
+          WHEN intensity_pga > 1.2 THEN 'Danger'
+          WHEN intensity_pga > 0.4 THEN 'Warning'
+          ELSE 'Safe'
+        END as risk_level,
+        COUNT(*) as count
+      FROM (
+        SELECT DISTINCT ON (device_id) intensity_pga 
+        FROM Seismic_Vibrations 
+        ORDER BY device_id, detected_at DESC
+      ) last_readings
+      GROUP BY risk_level;
+    `;
+
+    const result = await pool.query(query);
+    
+    // Format for Recharts (e.g., [{ name: 'Safe', value: 10 }, ...])
+    const distribution = result.rows.map(row => ({
+      name: row.risk_level,
+      value: parseInt(row.count)
+    }));
+
+    res.json(distribution);
+  } catch (err) {
+    console.error("Risk Dist Error:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// --- GET BUILDING RISK DISTRIBUTION ---
+export const getBuildingRiskDistribution = async (req, res) => {
+  try {
+    // Logic:
+    // Risk Score < 20 : Safe
+    // Risk Score > 80 : High Risk
+    // 20 - 80         : Moderate Risk
+    const query = `
+      SELECT 
+        CASE 
+          WHEN risk_score < 20 THEN 'Safe'
+          WHEN risk_score > 80 THEN 'High Risk'
+          ELSE 'Moderate Risk'
+        END as name,
+        COUNT(*) as value
+      FROM Buildings
+      GROUP BY name;
+    `;
+
+    const result = await pool.query(query);
+    
+    // Send back formatted data
+    const distribution = result.rows.map(row => ({
+      name: row.name,
+      value: parseInt(row.value)
+    }));
+
+    res.json(distribution);
+  } catch (err) {
+    console.error("Building Risk Error:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
 
 // --- REPORT SEISMIC ACTIVITY (The Trigger) ---
 export const reportSeismicActivity = async (req, res) => {
@@ -154,6 +251,101 @@ export const resolveAlert = async (req, res) => {
   } catch (err) {
     console.error("Resolve Error:", err);
     res.status(500).send("Server Error");
+  }
+};
+
+// --- GET CHART DATA (24 Hours) ---
+export const getSeismicChartData = async (req, res) => {
+  try {
+    // We fetch data specifically from our "Main Station" or average all sensors
+    const query = `
+      SELECT 
+        to_char(detected_at, 'HH24:MI') as time,
+        AVG(intensity_pga)::numeric(10,3) as magnitude
+      FROM Seismic_Vibrations
+      WHERE detected_at > NOW() - INTERVAL '24 hours'
+      GROUP BY detected_at
+      ORDER BY detected_at ASC;
+    `;
+
+    const result = await pool.query(query);
+
+    // Format for Recharts
+    const chartData = result.rows.map(row => ({
+      time: row.time,
+      magnitude: parseFloat(row.magnitude)
+    }));
+
+    res.json(chartData);
+  } catch (err) {
+    console.error("Chart Data Error:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// --- GET UNIFIED ALERT FEED ---
+export const getAlertFeed = async (req, res) => {
+  try {
+    const query = `
+      (
+        -- 1. Active Earthquakes
+        SELECT 
+          event_id::text as id, 
+          'critical' as type, 
+          'Earthquake Detected' as title, 
+          NOW() as time, -- Fallback to NOW() if timestamp column differs
+          'Epicenter: ' || event_type as location
+        FROM Disaster_Events 
+        WHERE is_active = TRUE
+      )
+      UNION ALL
+      (
+        -- 2. Rescue Requests
+        SELECT 
+          beacon_id::text as id, 
+          'alert' as type, 
+          'Rescue Requested' as title, 
+          activated_at as time, 
+          'Status: ' || status as location
+        FROM Distress_Beacons 
+        WHERE status = 'Active'
+      )
+      UNION ALL
+      (
+        -- 3. Severe Vibrations (Using your working logic from Recent Logs)
+        SELECT 
+          v.vibe_id::text as id, 
+          'warning' as type,
+          'Seismic Activity' as title, 
+          v.detected_at as time, 
+          COALESCE(z.zone_name, 'Dhaka') as location
+        FROM Seismic_Vibrations v
+        LEFT JOIN LATERAL (
+          SELECT zone_name FROM zones 
+          WHERE ST_Intersects(zones.boundary, v.location_gps::geography)
+          LIMIT 1
+        ) z ON true
+        WHERE v.intensity_pga > 0.5
+      )
+      ORDER BY time DESC 
+      LIMIT 10;
+    `;
+
+    const result = await pool.query(query);
+    
+    const formattedAlerts = result.rows.map(row => ({
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      location: row.location,
+      time: new Date(row.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+
+    res.json(formattedAlerts);
+  } catch (err) {
+    // THIS WILL SHOW YOU THE REAL ERROR IN YOUR TERMINAL
+    console.error("CRITICAL DATABASE ERROR:", err.message); 
+    res.status(500).json({ error: "Database error", details: err.message });
   }
 };
 
