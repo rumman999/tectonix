@@ -179,7 +179,7 @@ const SeismicMode = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
-              <span className="hidden md:block"><Waves className="h-8 w-8 text-primary" /></span>
+              <span className="hidden md:block"><Radio className="h-8 w-8 text-primary" /></span>
               Crowd-Sourced Network
             </h1>
             <p className="text-sm text-muted-foreground mt-1 font-mono">

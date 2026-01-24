@@ -106,8 +106,8 @@ export const reportSeismicActivity = async (req, res) => {
         const distinctDeviceCount = parseInt(countResult.rows[0].count);
         
         // --- THRESHOLD LOGIC ---
-        // Change '1' back to '50' when ready for production!
-        if (distinctDeviceCount >= 1) {
+        // Actually it would be 50, used a lower value of devices for demonstration
+        if (distinctDeviceCount >= 2) {
             
             // A. Create Event if missing
             const activeEvent = await client.query(

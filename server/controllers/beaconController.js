@@ -1,12 +1,11 @@
 import pool from "../config/db.js";
 
-// POST /api/beacons/activate
+
 export const createBeacon = async (req, res) => {
   try {
     const { lat, lng, status } = req.body;
     
-    // ✅ REAL AUTH: Get the user_id directly from the decoded token
-    // The middleware guarantees 'req.user' exists if it reaches here.
+
     const userId = req.user.user_id; 
 
     if (!lat || !lng) {

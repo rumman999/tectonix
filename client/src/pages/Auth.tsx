@@ -135,7 +135,7 @@ export const Auth = () => {
 
       // 5. Navigate based on role (Keep your original logic here)
       if (user.role_type === "First_Responder") {
-        navigate("/rescue");
+        navigate("/dashboard");
       } else {
         navigate("/dashboard");
       }
