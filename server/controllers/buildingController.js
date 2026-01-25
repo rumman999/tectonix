@@ -1,9 +1,7 @@
 import pool from "../config/db.js";
 
-// GET /api/buildings
 export const getBuildings = async (req, res) => {
   try {
-    // Convert PostGIS geography to Lat/Lng for frontend
     const query = `
       SELECT 
         building_id, 
@@ -32,7 +30,6 @@ export const getBuildings = async (req, res) => {
   }
 };
 
-// POST /api/buildings
 export const createBuilding = async (req, res) => {
   const { building_name, address_text, construction_year, location_gps } = req.body;
   
@@ -59,7 +56,6 @@ export const createBuilding = async (req, res) => {
   }
 };
 
-// GET /api/buildings/:id/ownership
 export const getOwnershipHistory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -79,10 +75,7 @@ export const getOwnershipHistory = async (req, res) => {
   }
 };
 
-// [EXISTING CODE ABOVE...]
 
-// NEW: Get ALL buildings (ID & Name) for the dropdown
-// (Unlike getBuildings, this includes ones with NULL risk_score)
 export const getBuildingList = async (req, res) => {
   try {
     const result = await pool.query("SELECT building_id, building_name FROM Buildings ORDER BY created_at DESC");
@@ -93,7 +86,6 @@ export const getBuildingList = async (req, res) => {
   }
 };
 
-// NEW: Update Risk Score (Manual Verification)
 export const updateRiskScore = async (req, res) => {
   const { id } = req.params;
   const { risk_score } = req.body;
@@ -112,7 +104,6 @@ export const updateRiskScore = async (req, res) => {
   }
 };
 
-// POST /api/buildings/transfer
 export const transferOwnership = async (req, res) => {
   const { building_id, owner_id, start_date } = req.body;
   
@@ -120,14 +111,12 @@ export const transferOwnership = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Close current ownership (if any)
     await client.query(`
       UPDATE building_ownership 
       SET end_date = $2 
       WHERE building_id = $1 AND end_date IS NULL
     `, [building_id, start_date]);
 
-    // 2. Insert new ownership
     await client.query(`
       INSERT INTO building_ownership (building_id, owner_id, start_date)
       VALUES ($1, $2, $3)
@@ -144,7 +133,6 @@ export const transferOwnership = async (req, res) => {
   }
 };
 
-// GET /api/buildings/owners (For Dropdown)
 export const getAllOwners = async (req, res) => {
   try {
     const result = await pool.query("SELECT user_id, legal_name FROM Owners ORDER BY legal_name ASC");
