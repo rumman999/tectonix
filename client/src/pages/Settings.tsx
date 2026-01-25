@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { API_BASE_URL, getHeaders } from "@/config";
 
-// Configuration for UI colors/icons based on role
+
 const roleConfig: any = {
   specialist: { color: "bg-blue-500/20 text-blue-400 border-blue-500/50", icon: Award, label: "Specialist" },
   first_responder: { color: "bg-orange-500/20 text-orange-400 border-orange-500/50", icon: Shield, label: "First Responder" },
@@ -37,7 +37,6 @@ const roleConfig: any = {
   citizen: { color: "bg-slate-500/20 text-slate-400 border-slate-500/50", icon: User, label: "Citizen" },
 };
 
-// Interface matching your DB response structure
 interface UserProfile {
   user_id: string;
   full_name: string;
