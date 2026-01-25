@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"; // Added Select Components
 
-// Define Building Interface
+
 interface Building {
   building_id: number;
   building_name: string;
@@ -43,7 +43,7 @@ export const DamageReport = () => {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   
-  // Building Selection State
+  
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
 
@@ -55,7 +55,7 @@ export const DamageReport = () => {
   const progressRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Fetch Buildings on Mount
+
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
@@ -125,7 +125,7 @@ export const DamageReport = () => {
         formData.append("location", location);
         formData.append("severity", severity.toString());
         
-        // Add building ID if selected
+        
         if (selectedBuildingId) {
             formData.append("building_id", selectedBuildingId);
         }
