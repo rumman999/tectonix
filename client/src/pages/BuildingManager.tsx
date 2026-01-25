@@ -201,7 +201,7 @@ export const BuildingManager = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
-  // Form state for Add Building
+
   const [newBuilding, setNewBuilding] = useState({
     building_name: "",
     address_text: "",
@@ -210,7 +210,7 @@ export const BuildingManager = () => {
     location_gps_lng: 0,
   });
 
-  // Form state for Transfer Ownership
+
   const [transfer, setTransfer] = useState({
     owner_id: "",
     start_date: "",
@@ -235,7 +235,7 @@ export const BuildingManager = () => {
     fetchBuildings();
   }, []);
 
-  // 2. Fetch Details (Ownership) when building selected
+
   useEffect(() => {
     if (selectedBuilding && activeTab === "ownership") {
       const fetchOwnership = async () => {
@@ -246,7 +246,7 @@ export const BuildingManager = () => {
           );
           setOwnershipHistory(res.data);
 
-          // Also fetch owners list for the dropdown
+      
           const ownersRes = await axios.get(
             `${API_BASE_URL}/api/buildings/owners`,
             { headers: getHeaders() },
