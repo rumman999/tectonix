@@ -1,6 +1,7 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef } from "react";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import {
   Activity,
   Upload,
@@ -10,36 +11,69 @@ import {
   CheckCircle,
   X,
   Image as ImageIcon,
-  Menu, // Added Menu icon
+  Menu,
+  Loader2,
+  Building2 // Added Icon
 } from "lucide-react";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-
-// FIX: Imports for Mobile Menu
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL, getHeaders } from "@/config";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Added Select Components
+
+// Define Building Interface
+interface Building {
+  building_id: number;
+  building_name: string;
+}
 
 export const DamageReport = () => {
+  const { toast } = useToast();
+  
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [severity, setSeverity] = useState(50);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  
+  // Building Selection State
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
+
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const progressRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 1. Fetch Buildings on Mount
+  useEffect(() => {
+    const fetchBuildings = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/buildings/list`, { headers: getHeaders() });
+        setBuildings(res.data);
+      } catch (err) {
+        console.error("Failed to load buildings");
+      }
+    };
+    fetchBuildings();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(selectedFile);
     }
   };
@@ -50,14 +84,76 @@ export const DamageReport = () => {
     if (droppedFile && droppedFile.type.startsWith("image/")) {
       setFile(droppedFile);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(droppedFile);
     }
   };
 
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Error", description: "Geolocation not supported", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Locating...", description: "Fetching GPS coordinates." });
+    
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setLocation(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        toast({ title: "Location Found", description: "Coordinates updated.", className: "bg-green-600 text-white" });
+      },
+      (err) => {
+        console.error(err);
+        toast({ title: "Location Error", description: "Could not fetch GPS.", variant: "destructive" });
+      }
+    );
+  };
+
+  const submitReport = async () => {
+    // Basic validation (Building is optional, but description/location are needed)
+    if (!description || !location) {
+        toast({ title: "Missing Info", description: "Please provide a description and location.", variant: "destructive" });
+        setHoldProgress(0);
+        return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+        const formData = new FormData();
+        formData.append("description", description);
+        formData.append("location", location);
+        formData.append("severity", severity.toString());
+        
+        // Add building ID if selected
+        if (selectedBuildingId) {
+            formData.append("building_id", selectedBuildingId);
+        }
+
+        if (file) {
+            formData.append("image", file);
+        }
+
+        const headers = getHeaders();
+        // @ts-ignore
+        delete headers["Content-Type"]; 
+
+        await axios.post(`${API_BASE_URL}/api/reports`, formData, { headers });
+
+        setIsSubmitted(true);
+        toast({ title: "Success", description: "Report submitted successfully.", className: "bg-green-600 text-white" });
+
+    } catch (err) {
+        console.error(err);
+        toast({ title: "Error", description: "Failed to submit report.", variant: "destructive" });
+        setHoldProgress(0);
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   const startHold = () => {
+    if (isSubmitting) return;
     setIsHolding(true);
     setHoldProgress(0);
 
@@ -65,10 +161,10 @@ export const DamageReport = () => {
       setHoldProgress((prev) => {
         if (prev >= 100) {
           clearInterval(progressRef.current!);
-          setIsSubmitted(true);
+          submitReport(); 
           return 100;
         }
-        return prev + 2;
+        return prev + 4; 
       });
     }, 30);
   };
@@ -98,7 +194,7 @@ export const DamageReport = () => {
   return (
     <div className="min-h-screen bg-background">
       
-      {/* --- MOBILE HEADER --- */}
+      {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-50">
         <div className="flex items-center gap-2 font-bold text-lg">
             <Activity className="text-primary h-6 w-6" />
@@ -115,15 +211,12 @@ export const DamageReport = () => {
         </Sheet>
       </div>
 
-      {/* --- DESKTOP SIDEBAR --- */}
       <div className="hidden md:block fixed left-0 top-0 bottom-0 z-50 w-64">
          <DashboardSidebar />
       </div>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="md:ml-64 p-4 md:p-8 transition-all duration-300">
         
-        {/* Render Success View OR Form View */}
         {isSubmitted ? (
           <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
             <motion.div
@@ -160,7 +253,9 @@ export const DamageReport = () => {
                         setPreview(null);
                         setDescription("");
                         setLocation("");
+                        setSelectedBuildingId("");
                         setSeverity(50);
+                        setHoldProgress(0);
                     }}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium"
                  >
@@ -172,11 +267,7 @@ export const DamageReport = () => {
         ) : (
           <div className="max-w-lg mx-auto space-y-6">
             
-            {/* Header Text */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <h1 className="text-2xl font-bold text-foreground mb-2">
                 Report Damage
               </h1>
@@ -186,11 +277,7 @@ export const DamageReport = () => {
             </motion.div>
 
             {/* Upload Zone */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -201,16 +288,9 @@ export const DamageReport = () => {
 
               {preview ? (
                 <div className="relative rounded-2xl overflow-hidden shadow-lg border border-white/10">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-full h-64 object-cover"
-                  />
+                  <img src={preview} alt="Preview" className="w-full h-64 object-cover" />
                   <button
-                    onClick={() => {
-                      setFile(null);
-                      setPreview(null);
-                    }}
+                    onClick={() => { setFile(null); setPreview(null); }}
                     className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
                   >
                     <X className="h-5 w-5" />
@@ -230,40 +310,40 @@ export const DamageReport = () => {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/30 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <ImageIcon className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
-                    <p className="text-foreground font-medium mb-1">
-                      Tap to upload photo
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      or drag and drop an image here
-                    </p>
+                    <p className="text-foreground font-medium mb-1">Tap to upload photo</p>
+                    <p className="text-sm text-muted-foreground">or drag and drop an image here</p>
                   </div>
                 </motion.div>
               )}
+            </motion.div>
 
-              <div className="flex gap-3 mt-3">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-muted/30 text-foreground font-medium hover:bg-muted/50 transition-colors"
-                >
-                  <Upload className="h-5 w-5" />
-                  Gallery
-                </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-muted/30 text-foreground font-medium hover:bg-muted/50 transition-colors">
-                  <Camera className="h-5 w-5" />
-                  Camera
-                </button>
-              </div>
+            {/* Building Selector (New) */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <label className="block text-sm font-medium text-foreground mb-2">Affected Building (Optional)</label>
+              <Select value={selectedBuildingId} onValueChange={setSelectedBuildingId}>
+                <SelectTrigger className="bg-muted/20 border-white/10 h-12">
+                  <SelectValue placeholder="Select a specific building" />
+                </SelectTrigger>
+                <SelectContent>
+                  {buildings.length > 0 ? (
+                    buildings.map((b) => (
+                      <SelectItem key={b.building_id} value={String(b.building_id)}>
+                        <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-muted-foreground" />
+                            {b.building_name}
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-xs text-muted-foreground">No buildings found</div>
+                  )}
+                </SelectContent>
+              </Select>
             </motion.div>
 
             {/* Location */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Location
-              </label>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <label className="block text-sm font-medium text-foreground mb-2">Location</label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -273,21 +353,18 @@ export const DamageReport = () => {
                   placeholder="Enter address or use GPS"
                   className="w-full bg-muted/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
-                <button className="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-3 py-1.5 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors">
+                <button 
+                    onClick={handleGetLocation}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-3 py-1.5 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors"
+                >
                   Use GPS
                 </button>
               </div>
             </motion.div>
 
             {/* Description */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-            >
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Description
-              </label>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <label className="block text-sm font-medium text-foreground mb-2">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -297,67 +374,43 @@ export const DamageReport = () => {
               />
             </motion.div>
 
-            {/* Severity Slider */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
+            {/* Severity */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-foreground">
-                  Severity Level
-                </label>
-                <span
-                  className={`text-sm font-bold bg-gradient-to-r ${getSeverityColor()} bg-clip-text text-transparent`}
-                >
+                <label className="text-sm font-medium text-foreground">Severity Level</label>
+                <span className={`text-sm font-bold bg-gradient-to-r ${getSeverityColor()} bg-clip-text text-transparent`}>
                   {getSeverityLabel()}
                 </span>
               </div>
-
-              <div className="relative">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={severity}
-                  onChange={(e) => setSeverity(Number(e.target.value))}
-                  className="w-full h-4 rounded-full appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, 
-                      hsl(var(--success)) 0%, 
-                      hsl(var(--warning)) 50%, 
-                      hsl(var(--destructive)) 100%)`,
-                  }}
-                />
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>Low</span>
-                  <span>Moderate</span>
-                  <span>Critical</span>
-                </div>
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={severity}
+                onChange={(e) => setSeverity(Number(e.target.value))}
+                className="w-full h-4 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, hsl(var(--success)) 0%, hsl(var(--warning)) 50%, hsl(var(--destructive)) 100%)`,
+                }}
+              />
             </motion.div>
 
             {/* Submit Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="pt-4"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="pt-4">
               <motion.button
+                disabled={isSubmitting}
                 onMouseDown={startHold}
                 onMouseUp={endHold}
                 onMouseLeave={endHold}
                 onTouchStart={startHold}
                 onTouchEnd={endHold}
-                className="relative w-full py-5 rounded-2xl font-bold text-white overflow-hidden shadow-lg select-none"
+                className={`relative w-full py-5 rounded-2xl font-bold text-white overflow-hidden shadow-lg select-none ${isSubmitting ? 'cursor-not-allowed opacity-80' : ''}`}
                 style={{
                   background: isHolding
                     ? `linear-gradient(to right, hsl(var(--destructive)), hsl(var(--warning)))`
                     : `linear-gradient(to right, hsl(var(--primary)), hsl(var(--accent)))`,
                 }}
               >
-                {/* Progress Overlay */}
                 <motion.div
                   className="absolute inset-0 bg-white/30"
                   style={{
@@ -365,13 +418,11 @@ export const DamageReport = () => {
                     transition: isHolding ? "none" : "width 0.3s ease-out",
                   }}
                 />
-
                 <span className="relative flex items-center justify-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  {isHolding ? `Hold to Submit (${Math.round(holdProgress)}%)` : "Press & Hold to Submit"}
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <AlertTriangle className="h-5 w-5" />}
+                  {isSubmitting ? "Uploading..." : isHolding ? `Hold to Submit (${Math.round(holdProgress)}%)` : "Press & Hold to Submit"}
                 </span>
               </motion.button>
-
               <p className="text-center text-xs text-muted-foreground mt-3">
                 Hold the button for 1.5 seconds to prevent accidental submissions
               </p>

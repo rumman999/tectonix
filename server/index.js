@@ -9,7 +9,7 @@ import zoneRoutes from './routes/zoneRoutes.js';
 import buildingRoutes from "./routes/buildingRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import estimateRoutes from "./routes/estimateRoutes.js";
-
+import reportRoutes from "./routes/reportRoutes.js";
 
 dotenv.config();
 
@@ -25,6 +25,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
+app.use('/uploads', express.static('uploads'));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/beacons", beaconRoutes);
 app.use("/api/dashboard", dashboardRoutes);
@@ -32,6 +34,7 @@ app.use('/api/zones', zoneRoutes);
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/scanner", aiRoutes);
 app.use("/api/estimates", estimateRoutes);
+app.use("/api/reports", reportRoutes);
 
 
 app.get("/", (req, res) => {
