@@ -71,7 +71,7 @@ export const RescueCoordinator = () => {
   const [selectedResponderIds, setSelectedResponderIds] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
 
-  // 1. Fetch Data
+
   const fetchData = async () => {
     try {
       const [feedRes, staffRes] = await Promise.all([
