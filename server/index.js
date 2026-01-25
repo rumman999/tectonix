@@ -7,6 +7,9 @@ import beaconRoutes from "./routes/beaconRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import zoneRoutes from './routes/zoneRoutes.js'; 
 import buildingRoutes from "./routes/buildingRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import estimateRoutes from "./routes/estimateRoutes.js";
+
 
 dotenv.config();
 
@@ -27,6 +30,8 @@ app.use("/api/beacons", beaconRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use("/api/buildings", buildingRoutes);
+app.use("/api/scanner", aiRoutes);
+app.use("/api/estimates", estimateRoutes);
 
 
 app.get("/", (req, res) => {

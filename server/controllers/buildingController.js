@@ -79,6 +79,39 @@ export const getOwnershipHistory = async (req, res) => {
   }
 };
 
+// [EXISTING CODE ABOVE...]
+
+// NEW: Get ALL buildings (ID & Name) for the dropdown
+// (Unlike getBuildings, this includes ones with NULL risk_score)
+export const getBuildingList = async (req, res) => {
+  try {
+    const result = await pool.query("SELECT building_id, building_name FROM Buildings ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// NEW: Update Risk Score (Manual Verification)
+export const updateRiskScore = async (req, res) => {
+  const { id } = req.params;
+  const { risk_score } = req.body;
+
+  try {
+    const query = `
+      UPDATE Buildings 
+      SET risk_score = $1 
+      WHERE building_id = $2
+    `;
+    await pool.query(query, [risk_score, id]);
+    res.json({ message: "Risk score updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update risk score" });
+  }
+};
+
 // POST /api/buildings/transfer
 export const transferOwnership = async (req, res) => {
   const { building_id, owner_id, start_date } = req.body;

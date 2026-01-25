@@ -18,7 +18,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast"; 
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"; //
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { getHeaders, API_BASE_URL } from "@/config";
 
 interface BeaconLog {
   beacon_id: string;
@@ -39,7 +40,9 @@ export default function BeaconView() {
 
   const fetchHistory = async () => {
     try {
-      const res = await axios.get("/api/beacons/history", getAuthHeaders());
+      // FIX 1: Use API_BASE_URL
+      // FIX 2: Wrap getHeaders() inside { headers: ... }
+      const res = await axios.get(`${API_BASE_URL}/api/beacons/history`, { headers: getHeaders() });
       setHistory(res.data);
       
       if (res.data.length > 0 && res.data[0].status === "Active") {
@@ -65,14 +68,13 @@ export default function BeaconView() {
         throw new Error("Geolocation is not supported by your browser");
       }
 
-      // FIX: Wrap Geolocation in a Promise to handle Timeouts & Errors properly
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
           resolve, 
           (err) => reject(err), 
           { 
             enableHighAccuracy: true, 
-            timeout: 10000, // Fail after 10 seconds if no GPS
+            timeout: 10000,
             maximumAge: 0 
           }
         );
@@ -86,10 +88,11 @@ export default function BeaconView() {
         status: newStatus 
       };
 
+      // FIX 3: Use API_BASE_URL and correct Axios config syntax
       await axios.post(
-        "/api/beacons/activate", 
+        `${API_BASE_URL}/api/beacons/activate`, 
         payload,
-        getAuthHeaders()
+        { headers: getHeaders() } 
       );
       
       if (!isActive) {
@@ -109,7 +112,6 @@ export default function BeaconView() {
       fetchHistory(); 
 
     } catch (err: any) {
-      // Handle Geolocation specific errors
       let errorMessage = "Failed to update beacon";
       
       if (err.code === 1) errorMessage = "Location permission denied. Please enable GPS.";
