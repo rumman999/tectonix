@@ -199,13 +199,9 @@ export const RetrofitCalculator = () => {
     }
   };
 
-  const handleSaveEstimate = async () => {
+const handleSaveEstimate = async () => {
     if (!selectedBuildingId) {
-      toast({
-        title: "Building Required",
-        description: "Please select a building in Step 1.",
-        variant: "destructive",
-      });
+      toast({ title: "Building Required", description: "Please select a building in Step 1.", variant: "destructive" });
       setStep(1);
       return;
     }
@@ -213,31 +209,29 @@ export const RetrofitCalculator = () => {
     setSaving(true);
     try {
       const payload = {
-        building_id: parseInt(selectedBuildingId), // Buildings usually use INT IDs
+        // FIX: Do NOT use parseInt(). Pass as string for UUID compatibility.
+        building_id: selectedBuildingId, 
         total_cost: totalCost,
-        line_items: lineItems.map((item) => ({
-          material_id: parseInt(item.material_id), // Material IDs are usually INTs
+        // Optional context
+        building_type: buildingType, 
+        line_items: lineItems.map(item => ({
+          material_id: parseInt(item.material_id), // Materials are INT, so parseInt is correct here
           quantity: item.quantity,
           subtotal: item.subtotal,
         })),
       };
 
-      await axios.post(`${API_BASE_URL}/api/estimates`, payload, {
-        headers: getHeaders(),
+      await axios.post(`${API_BASE_URL}/api/estimates`, payload, { headers: getHeaders() });
+      
+      toast({ 
+        title: "Estimate Saved!", 
+        description: "Your retrofit estimate has been saved to the database.",
+        className: "bg-green-600 text-white border-none"
       });
 
-      toast({
-        title: "Estimate Saved!",
-        description: "Your retrofit estimate has been saved to the database.",
-        className: "bg-green-600 text-white border-none",
-      });
     } catch (err) {
       console.error("Save failed", err);
-      toast({
-        title: "Save Failed",
-        description: "Could not save the estimate.",
-        variant: "destructive",
-      });
+      toast({ title: "Save Failed", description: "Could not save the estimate.", variant: "destructive" });
     } finally {
       setSaving(false);
     }

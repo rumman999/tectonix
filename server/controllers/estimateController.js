@@ -1,5 +1,5 @@
 import pool from "../config/db.js";
-import { randomUUID } from "crypto"; // Import the UUID generator
+import { randomUUID } from "crypto";
 
 // GET /api/estimates/materials
 export const getMaterials = async (req, res) => {
@@ -16,33 +16,34 @@ export const getMaterials = async (req, res) => {
 export const createEstimate = async (req, res) => {
   const { building_id, total_cost, line_items } = req.body;
   
-  // 1. Get the User ID from the token (which is "6")
+  // 1. Handle User ID (Fixing the "invalid input syntax" error)
   let user_id = req.user.user_id; 
-
-  // 2. CHECK: Is it a valid UUID? If not (like "6"), generate a fake one.
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   
+  // If ID is not a UUID (e.g. "6"), generate a valid one so the DB doesn't crash
   if (!user_id || !uuidRegex.test(String(user_id))) {
-    console.log(`⚠️ User ID "${user_id}" is not a UUID. Generating a temporary UUID for this estimate.`);
-    user_id = randomUUID(); // Generates a valid string like 'a0eebc99-9c0b...'
+    console.log(`⚠️ User ID "${user_id}" is not a UUID. Using generated UUID for 'generated_by'.`);
+    user_id = randomUUID(); 
   }
 
-  // Basic Validation
+  // 2. Validate Input
   if (!building_id) return res.status(400).json({ error: "Building ID is required" });
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // 3. Insert using the (possibly fake) UUID
+    // 3. Insert Estimate (Using your specific column names)
+    // Note: mapping 'total_cost' from frontend to 'total_estimated_cost' in DB
     const estimateQuery = `
-      INSERT INTO Retrofit_Estimates (building_id, generated_by, total_cost)
+      INSERT INTO Retrofit_Estimates (building_id, generated_by, total_estimated_cost)
       VALUES ($1, $2, $3)
       RETURNING estimate_id
     `;
+    
     const estimateRes = await client.query(estimateQuery, [
-      building_id, 
-      user_id, 
+      building_id, // Sent as String/UUID
+      user_id,     // Sent as String/UUID
       total_cost || 0
     ]);
     const estimateId = estimateRes.rows[0].estimate_id;
@@ -58,9 +59,9 @@ export const createEstimate = async (req, res) => {
 
       await client.query(lineItemQuery, [
         estimateId,
-        parseInt(item.material_id),
-        item.quantity || 0,
-        item.subtotal || 0
+        parseInt(item.material_id), // Material IDs are Serial (Int) -> OK
+        item.quantity,
+        item.subtotal
       ]);
     }
 
@@ -70,7 +71,13 @@ export const createEstimate = async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error("DATABASE ERROR:", err.message);
-    res.status(500).json({ error: err.message });
+    
+    // Help debug foreign key issues
+    if (err.code === '23503') {
+        res.status(500).json({ error: "Foreign Key Error: The Building ID or User ID does not exist in the referenced tables." });
+    } else {
+        res.status(500).json({ error: err.message });
+    }
   } finally {
     client.release();
   }
