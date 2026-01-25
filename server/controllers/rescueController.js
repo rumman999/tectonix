@@ -1,7 +1,5 @@
 import pool from "../config/db.js";
 
-// GET /api/rescue/feed
-// Fetches Active Beacons and Active Disaster Events
 export const getRescueFeed = async (req, res) => {
   try {
     const [beaconsRes, eventsRes] = await Promise.all([
@@ -43,11 +41,8 @@ export const getRescueFeed = async (req, res) => {
   }
 };
 
-// GET /api/rescue/personnel
-// Fetches available First Responders and Volunteers
 export const getPersonnel = async (req, res) => {
   try {
-    // We join with the subtypes to get specific info (Rank/Proficiency)
     const query = `
       SELECT 
         u.user_id, 
@@ -71,8 +66,6 @@ export const getPersonnel = async (req, res) => {
   }
 };
 
-// POST /api/rescue/assign
-// Assigns multiple people to a task
 export const assignPersonnel = async (req, res) => {
   const { task_type, task_id, responder_ids } = req.body;
   // task_type: 'Beacon' | 'Event'
