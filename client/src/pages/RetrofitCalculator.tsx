@@ -39,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type BuildingType = "commercial" | "residential" | null;
 
-// Database Types
+
 interface MaterialRate {
   material_id: number;
   item_name: string;
@@ -64,11 +64,11 @@ export const RetrofitCalculator = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Data from API
+
   const [materials, setMaterials] = useState<MaterialRate[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
 
-  // Form State
+
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
   const [buildingType, setBuildingType] = useState<BuildingType>(null);
   const [sqFootage, setSqFootage] = useState(2000);
@@ -80,7 +80,7 @@ export const RetrofitCalculator = () => {
 
   const [displayedCost, setDisplayedCost] = useState(0);
 
-  // 1. Fetch Data on Load
+
   useEffect(() => {
     const initData = async () => {
       try {
@@ -115,12 +115,11 @@ export const RetrofitCalculator = () => {
     initData();
   }, []);
 
-  // Calculate total cost
+
   const totalCost = useMemo(() => {
     return lineItems.reduce((sum, item) => sum + item.subtotal, 0);
   }, [lineItems]);
 
-  // Animate cost counter
   useEffect(() => {
     const duration = 800;
     const startTime = Date.now();
