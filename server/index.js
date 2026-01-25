@@ -10,6 +10,7 @@ import buildingRoutes from "./routes/buildingRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import estimateRoutes from "./routes/estimateRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import rescueRoutes from "./routes/rescueRoutes.js";
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use("/api/buildings", buildingRoutes);
 app.use("/api/scanner", aiRoutes);
 app.use("/api/estimates", estimateRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/rescue", rescueRoutes);
 
 
 app.get("/", (req, res) => {
