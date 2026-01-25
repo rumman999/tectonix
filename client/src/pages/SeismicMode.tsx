@@ -6,10 +6,9 @@ import { Activity, Radio, Smartphone, Settings2, Menu, ShieldAlert, Waves } from
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-// FIX: Imported SheetTitle to solve the accessibility error
+
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
-// Helper for Persistent ID
 const getClientId = () => {
   let uuid = localStorage.getItem("seismic_client_uuid");
   if (!uuid) {
@@ -28,7 +27,7 @@ const SeismicMode = () => {
   const [shakeCount, setShakeCount] = useState(0);
   const [clientId, setClientId] = useState("");
   
-  // Rate Limiting
+
   const lastReportTime = useRef<number>(0);
   const historyRef = useRef<number[]>(new Array(100).fill(0));
   const [graphPath, setGraphPath] = useState("");
