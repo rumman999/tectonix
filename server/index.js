@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import beaconRoutes from "./routes/beaconRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import zoneRoutes from './routes/zoneRoutes.js'; 
+import buildingRoutes from "./routes/buildingRoutes.js";
 
 dotenv.config();
 
@@ -25,6 +26,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/beacons", beaconRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use('/api/zones', zoneRoutes);
+app.use("/api/buildings", buildingRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("Tectonix API is running");

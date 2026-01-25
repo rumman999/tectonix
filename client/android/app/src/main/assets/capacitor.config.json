@@ -1,0 +1,9 @@
+{
+	"appId": "com.tectonix.app",
+	"appName": "Tectonix",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"linuxAndroidStudioPath": "/snap/android-studio/209/bin/studio.sh"
+}

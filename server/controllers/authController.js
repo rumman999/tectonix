@@ -182,4 +182,79 @@ const login = async (req, res) => {
     }
 };
 
+
+export const getUserProfile = async (req, res) => {
+  try {
+    // req.user is set by the verifyToken middleware
+    const userId = req.user.user_id; 
+
+    // 1. Fetch Base User Data
+    const userResult = await pool.query(
+      "SELECT user_id, full_name, email, phone_number, role_type FROM Users WHERE user_id = $1",
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+    let roleData = {};
+
+    // 2. Fetch Role-Specific Data
+    if (user.role_type === "Specialist") {
+      const result = await pool.query(
+        "SELECT license_no, specialization FROM Specialists WHERE user_id = $1",
+        [userId]
+      );
+      roleData = result.rows[0] || {};
+      
+    } else if (user.role_type === "First_Responder" || user.role_type === "Responder") {
+      const result = await pool.query(
+        "SELECT badge_no, rank FROM First_Responders WHERE user_id = $1",
+        [userId]
+      );
+      roleData = result.rows[0] || {};
+
+    } else if (user.role_type === "Volunteer") {
+      const result = await pool.query(
+        "SELECT proficiency_level, verification_date FROM Volunteers WHERE user_id = $1",
+        [userId]
+      );
+      const volData = result.rows[0] || {};
+      // Calculate 'verified' boolean based on date existence
+      roleData = {
+        proficiency_level: volData.proficiency_level,
+        skills_verified: !!volData.verification_date 
+      };
+
+    } else if (user.role_type === "Owner") {
+      // Get Owner Type
+      const result = await pool.query(
+        "SELECT legal_name, owner_type FROM Owners WHERE user_id = $1",
+        [userId]
+      );
+      const ownerInfo = result.rows[0] || {};
+
+      // Get Property Count (Active Ownerships)
+      const countRes = await pool.query(
+        "SELECT COUNT(*) FROM building_ownership WHERE owner_id = $1 AND end_date IS NULL",
+        [userId]
+      );
+      
+      roleData = {
+        ...ownerInfo,
+        total_properties: parseInt(countRes.rows[0].count) || 0
+      };
+    }
+
+    // 3. Merge and Return
+    res.json({ ...user, ...roleData });
+
+  } catch (err) {
+    console.error("Profile Fetch Error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 export { register, login }

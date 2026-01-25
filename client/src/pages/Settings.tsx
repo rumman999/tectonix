@@ -1,52 +1,35 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { motion } from "framer-motion";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { 
   User, 
   Shield, 
   Bell, 
   MapPin, 
-  LogOut,
-  Award,
-  Briefcase,
-  Heart,
-  Building2,
-  Menu,
-  Mail,
-  Phone,
-  Settings as SettingsIcon,
-  ChevronRight
+  LogOut, 
+  Award, 
+  Briefcase, 
+  Heart, 
+  Building2, 
+  Menu, 
+  Mail, 
+  Phone, 
+  Settings as SettingsIcon, 
+  ChevronRight, 
+  Loader2 
 } from "lucide-react";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
-// FIX: Imports for Mobile Menu
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { API_BASE_URL, getHeaders } from "@/config";
 
-type RoleType = "specialist" | "first_responder" | "volunteer" | "owner" | "citizen";
-
-// Mock user data
-const mockUserData = {
-  user_id: "usr_001",
-  full_name: "Dr. Anika Rahman",
-  email: "anika.rahman@tectonix.bd",
-  phone: "+880-1712-345678",
-  role_type: "specialist" as RoleType, // Change this to test other roles
-  
-  // Role Specific Fields
-  license_no: "ENG-2024-88",
-  specialization: "Structural Engineering",
-  badge_no: "FR-991",
-  rank: "Senior Captain",
-  proficiency_level: "Expert",
-  skills_verified: true,
-  total_properties: 12,
-};
-
-const roleConfig = {
+// Configuration for UI colors/icons based on role
+const roleConfig: any = {
   specialist: { color: "bg-blue-500/20 text-blue-400 border-blue-500/50", icon: Award, label: "Specialist" },
   first_responder: { color: "bg-orange-500/20 text-orange-400 border-orange-500/50", icon: Shield, label: "First Responder" },
   volunteer: { color: "bg-green-500/20 text-green-400 border-green-500/50", icon: Heart, label: "Volunteer" },
@@ -54,18 +37,79 @@ const roleConfig = {
   citizen: { color: "bg-slate-500/20 text-slate-400 border-slate-500/50", icon: User, label: "Citizen" },
 };
 
+// Interface matching your DB response structure
+interface UserProfile {
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  role_type: string;
+  // Optional role-specific fields
+  license_no?: string;
+  specialization?: string;
+  badge_no?: string;
+  rank?: string;
+  proficiency_level?: string;
+  skills_verified?: boolean;
+  total_properties?: number;
+  owner_type?: string;
+}
+
 const Settings = () => {
   const navigate = useNavigate();
-  const [push_notifications, setPushNotifications] = useState(true);
-  const [location_tracking, setLocationTracking] = useState(false);
+  const [pushNotifications, setPushNotifications] = useState(true);
+  const [locationTracking, setLocationTracking] = useState(false);
   
-  const user = mockUserData;
-  const roleInfo = roleConfig[user.role_type];
-  const RoleIcon = roleInfo.icon;
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/auth/profile`, { headers: getHeaders() });
+        setUser(res.data);
+      } catch (err) {
+        console.error("Failed to load profile", err);
+        setError("Failed to load user data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user"); // Clear any cached user data
     navigate("/");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-muted-foreground gap-4">
+        <p>{error || "User not found."}</p>
+        <Button onClick={() => window.location.reload()} variant="outline">Retry</Button>
+      </div>
+    );
+  }
+
+  // Normalize role from DB (e.g. "Specialist" -> "specialist") for UI config lookup
+  let normalizedRole = user.role_type?.toLowerCase() || "citizen";
+  if (normalizedRole === "responder") normalizedRole = "first_responder";
+  if (normalizedRole === "first_responder") normalizedRole = "first_responder";
+
+  const roleInfo = roleConfig[normalizedRole] || roleConfig.citizen;
+  const RoleIcon = roleInfo.icon;
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,7 +140,7 @@ const Settings = () => {
       <main className="md:ml-64 p-4 md:p-8 transition-all duration-300">
         <div className="max-w-4xl mx-auto space-y-6">
           
-          {/* Page Title (Desktop only) */}
+          {/* Page Title (Desktop) */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -112,7 +156,7 @@ const Settings = () => {
             animate={{ opacity: 1, scale: 1 }}
           >
             <GlassCard className="relative overflow-hidden p-0" hover={false}>
-                {/* Decorative Background Banner */}
+                {/* Decorative Background */}
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary/20 via-accent/10 to-background" />
                 
                 <div className="relative pt-12 px-6 pb-6 flex flex-col md:flex-row items-center md:items-end gap-6">
@@ -134,7 +178,7 @@ const Settings = () => {
                         <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-muted-foreground text-sm mt-1">
                             <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email}</span>
                             <span className="hidden md:inline">•</span>
-                            <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {user.phone}</span>
+                            <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {user.phone_number || "No phone"}</span>
                         </div>
                     </div>
 
@@ -154,8 +198,8 @@ const Settings = () => {
             {/* Left Column: Role Details */}
             <div className="lg:col-span-2 space-y-6">
                 
-                {/* Professional Info */}
-                {user.role_type !== "citizen" && (
+                {/* Professional Info Section (Conditional) */}
+                {normalizedRole !== "citizen" && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                         <GlassCard>
                             <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/5">
@@ -164,49 +208,49 @@ const Settings = () => {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {user.role_type === "specialist" && (
+                                {normalizedRole === "specialist" && (
                                     <>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">License Number</p>
-                                            <p className="font-mono text-foreground">{user.license_no}</p>
+                                            <p className="font-mono text-foreground">{user.license_no || "N/A"}</p>
                                         </div>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">Specialization</p>
-                                            <p className="font-medium text-foreground">{user.specialization}</p>
+                                            <p className="font-medium text-foreground">{user.specialization || "General"}</p>
                                         </div>
                                     </>
                                 )}
 
-                                {user.role_type === "first_responder" && (
+                                {normalizedRole === "first_responder" && (
                                     <>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">Badge Number</p>
-                                            <p className="font-mono text-foreground">{user.badge_no}</p>
+                                            <p className="font-mono text-foreground">{user.badge_no || "N/A"}</p>
                                         </div>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">Rank</p>
-                                            <p className="font-medium text-foreground">{user.rank}</p>
+                                            <p className="font-medium text-foreground">{user.rank || "N/A"}</p>
                                         </div>
                                     </>
                                 )}
 
-                                {user.role_type === "volunteer" && (
+                                {normalizedRole === "volunteer" && (
                                     <>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">Proficiency Level</p>
-                                            <p className="font-medium text-green-400">{user.proficiency_level}</p>
+                                            <p className="font-medium text-green-400">{user.proficiency_level || "Beginner"}</p>
                                         </div>
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                                             <p className="text-xs text-muted-foreground mb-1">Status</p>
                                             <div className="flex items-center gap-2">
                                                 <span className={`w-2 h-2 rounded-full ${user.skills_verified ? "bg-green-500" : "bg-red-500"}`} />
-                                                <span className="font-medium text-foreground">{user.skills_verified ? "Verified" : "Pending"}</span>
+                                                <span className="font-medium text-foreground">{user.skills_verified ? "Verified" : "Pending Verification"}</span>
                                             </div>
                                         </div>
                                     </>
                                 )}
 
-                                {user.role_type === "owner" && (
+                                {normalizedRole === "owner" && (
                                     <div className="p-3 rounded-lg bg-white/5 border border-white/5 md:col-span-2">
                                         <p className="text-xs text-muted-foreground mb-1">Registered Properties</p>
                                         <p className="text-2xl font-bold text-foreground">{user.total_properties}</p>
@@ -236,7 +280,7 @@ const Settings = () => {
                                         <p className="text-xs text-muted-foreground">Get alerts about nearby disasters</p>
                                     </div>
                                 </div>
-                                <Switch checked={push_notifications} onCheckedChange={setPushNotifications} />
+                                <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
                             </div>
 
                             <div className="flex items-center justify-between">
@@ -249,7 +293,7 @@ const Settings = () => {
                                         <p className="text-xs text-muted-foreground">Allow GPS for emergency response</p>
                                     </div>
                                 </div>
-                                <Switch checked={location_tracking} onCheckedChange={setLocationTracking} />
+                                <Switch checked={locationTracking} onCheckedChange={setLocationTracking} />
                             </div>
                         </div>
                     </GlassCard>
