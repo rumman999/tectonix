@@ -1,7 +1,6 @@
 import pool from "../config/db.js";
 import jwt from "jsonwebtoken";
 
-// --- GET DASHBOARD STATS ---
 export const getDashboardStats = async (req, res) => {
   try {
     const [buildingsRes, sensorsRes, alertsRes] = await Promise.all([
@@ -24,8 +23,6 @@ export const getDashboardStats = async (req, res) => {
 
 export const getRecentLogs = async (req, res) => {
   try {
-    // 1. You MUST use ST_X and ST_Y to get coordinates from the geometry/geography column
-    // 2. Added the LATERAL JOIN to find the specific zone name
     const result = await pool.query(`
       SELECT 
         v.vibe_id, 
@@ -48,7 +45,6 @@ export const getRecentLogs = async (req, res) => {
     `);
 
     const logs = result.rows.map(row => {
-      // Clean up the browser string
       let sensorType = row.device_model || "Mobile Sensor";
       if (sensorType.includes("Mozilla")) {
         sensorType = sensorType.includes("Android") ? "Android Device" : 
@@ -59,7 +55,6 @@ export const getRecentLogs = async (req, res) => {
         id: row.vibe_id.toString().substring(0, 8),
         sensor: sensorType,
         location: row.zone_name || "Unknown Zone",
-        // CRITICAL: You must include these so the map has coordinates!
         lat: parseFloat(row.lat),
         lng: parseFloat(row.lng),
         status: row.intensity_pga > 1.0 ? "danger" : row.intensity_pga > 0.3 ? "warning" : "safe",
@@ -75,7 +70,6 @@ export const getRecentLogs = async (req, res) => {
   }
 };
 
-// --- GET RISK DISTRIBUTION ---
 export const getRiskDistribution = async (req, res) => {
   try {
     const query = `
@@ -96,7 +90,6 @@ export const getRiskDistribution = async (req, res) => {
 
     const result = await pool.query(query);
     
-    // Format for Recharts (e.g., [{ name: 'Safe', value: 10 }, ...])
     const distribution = result.rows.map(row => ({
       name: row.risk_level,
       value: parseInt(row.count)
@@ -109,13 +102,8 @@ export const getRiskDistribution = async (req, res) => {
   }
 };
 
-// --- GET BUILDING RISK DISTRIBUTION ---
 export const getBuildingRiskDistribution = async (req, res) => {
   try {
-    // Logic:
-    // Risk Score < 20 : Safe
-    // Risk Score > 80 : High Risk
-    // 20 - 80         : Moderate Risk
     const query = `
       SELECT 
         CASE 
@@ -130,7 +118,6 @@ export const getBuildingRiskDistribution = async (req, res) => {
 
     const result = await pool.query(query);
     
-    // Send back formatted data
     const distribution = result.rows.map(row => ({
       name: row.name,
       value: parseInt(row.value)
@@ -144,12 +131,10 @@ export const getBuildingRiskDistribution = async (req, res) => {
 };
 
 
-// --- REPORT SEISMIC ACTIVITY (The Trigger) ---
 export const reportSeismicActivity = async (req, res) => {
     const { lat, lng, magnitude, client_uuid } = req.body;
     const userAgent = req.headers['user-agent'] || 'Unknown Device';
     
-    // 1. OPTIONAL: Link User ID if logged in
     let user_id = null;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
@@ -166,14 +151,12 @@ export const reportSeismicActivity = async (req, res) => {
 
         let deviceId;
 
-        // 2. Find or Create Device
         const deviceCheck = await client.query(
             "SELECT device_id FROM Devices WHERE client_uuid = $1 LIMIT 1", [client_uuid]
         );
 
         if (deviceCheck.rows.length > 0) {
             deviceId = deviceCheck.rows[0].device_id;
-            // Update last_active
             await client.query("UPDATE Devices SET last_active = NOW() WHERE device_id = $1", [deviceId]);
             if(user_id) {
                  await client.query("UPDATE Devices SET user_id = $2 WHERE device_id = $1", [deviceId, user_id]);
@@ -187,14 +170,12 @@ export const reportSeismicActivity = async (req, res) => {
             deviceId = newDevice.rows[0].device_id;
         }
 
-        // 3. Log Vibration
         await client.query(
             `INSERT INTO Seismic_Vibrations (device_id, location_gps, intensity_pga, detected_at) 
             VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, NOW())`,
             [deviceId, lng, lat, magnitude]
         );
 
-        // 4. CHECK FOR DANGER (Sliding Window 10s)
         const countResult = await client.query(`
             SELECT COUNT(DISTINCT device_id) FROM Seismic_Vibrations 
             WHERE detected_at > NOW() - INTERVAL '10 seconds'
@@ -202,11 +183,8 @@ export const reportSeismicActivity = async (req, res) => {
 
         const distinctDeviceCount = parseInt(countResult.rows[0].count);
         
-        // --- THRESHOLD LOGIC ---
-        // Actually it would be 50, used a lower value of devices for demonstration
         if (distinctDeviceCount >= 2) {
             
-            // A. Create Event if missing
             const activeEvent = await client.query(
                 "SELECT event_id FROM Disaster_Events WHERE event_type = 'Earthquake' AND is_active = TRUE"
             );
@@ -219,7 +197,6 @@ export const reportSeismicActivity = async (req, res) => {
                 );
             }
 
-            // B. FORCE UPDATE THE SYSTEM ALERT STATUS
             await client.query("UPDATE system_alerts SET status = 'CRITICAL'");
         }
 
@@ -235,16 +212,12 @@ export const reportSeismicActivity = async (req, res) => {
     }
 };
 
-// --- RESOLVE ALERT (The "I Am Safe" Button) ---
 export const resolveAlert = async (req, res) => {
   try {
-    // 1. Turn off Event
     await pool.query("UPDATE Disaster_Events SET is_active = FALSE WHERE is_active = TRUE");
     
-    // 2. Clear Vibrations (Reset Counter)
     await pool.query("DELETE FROM Seismic_Vibrations");
 
-    // 3. Reset System Status (Turn off Red Screen)
     await pool.query("UPDATE system_alerts SET status = 'SAFE'");
 
     res.json({ message: "System Reset to Safe." });
@@ -254,10 +227,8 @@ export const resolveAlert = async (req, res) => {
   }
 };
 
-// --- GET CHART DATA (24 Hours) ---
 export const getSeismicChartData = async (req, res) => {
   try {
-    // We fetch data specifically from our "Main Station" or average all sensors
     const query = `
       SELECT 
         to_char(detected_at, 'HH24:MI') as time,
@@ -270,7 +241,6 @@ export const getSeismicChartData = async (req, res) => {
 
     const result = await pool.query(query);
 
-    // Format for Recharts
     const chartData = result.rows.map(row => ({
       time: row.time,
       magnitude: parseFloat(row.magnitude)
@@ -283,7 +253,6 @@ export const getSeismicChartData = async (req, res) => {
   }
 };
 
-// --- GET UNIFIED ALERT FEED ---
 export const getAlertFeed = async (req, res) => {
   try {
     const query = `
@@ -343,20 +312,16 @@ export const getAlertFeed = async (req, res) => {
 
     res.json(formattedAlerts);
   } catch (err) {
-    // THIS WILL SHOW YOU THE REAL ERROR IN YOUR TERMINAL
     console.error("CRITICAL DATABASE ERROR:", err.message); 
     res.status(500).json({ error: "Database error", details: err.message });
   }
 };
 
-// --- GET STATUS ---
 export const getSystemStatus = async (req, res) => {
     try {
-        // We now check system_alerts first for speed
         const result = await pool.query("SELECT status FROM system_alerts LIMIT 1");
         
         if (result.rows.length > 0 && result.rows[0].status === 'CRITICAL') {
-             // Fetch details if needed
              const event = await pool.query("SELECT * FROM Disaster_Events WHERE is_active = TRUE LIMIT 1");
              res.json({ status: 'CRITICAL', details: event.rows[0] });
         } else {

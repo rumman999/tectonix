@@ -36,10 +36,8 @@ export const createBeacon = async (req, res) => {
   }
 };
 
-// GET /api/beacons/history
 export const getMyBeacons = async (req, res) => {
   try {
-    // ✅ REAL AUTH: Fetch only this user's beacons
     const userId = req.user.user_id;
 
     const query = `

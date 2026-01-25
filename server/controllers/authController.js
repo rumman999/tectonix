@@ -156,15 +156,13 @@ const login = async (req, res) => {
             return res.status(401).json({ message: "Invalid Credentials" });
         }
 
-        // ✅ FIX: Match the payload structure used in 'register'
-        // This ensures the middleware always has access to user_id and role
         const token = jwt.sign(
             { 
                 user_id: user.user_id, 
-                role: user.role_type // Added role for consistency
+                role: user.role_type
             },
             process.env.JWT_SECRET,
-            { expiresIn: "24h" } // Extended to 24h so you don't get logged out while devving
+            { expiresIn: "24h" }
         );
 
         res.json({ 
@@ -185,10 +183,9 @@ const login = async (req, res) => {
 
 export const getUserProfile = async (req, res) => {
   try {
-    // req.user is set by the verifyToken middleware
+    
     const userId = req.user.user_id; 
 
-    // 1. Fetch Base User Data
     const userResult = await pool.query(
       "SELECT user_id, full_name, email, phone_number, role_type FROM Users WHERE user_id = $1",
       [userId]
@@ -201,7 +198,7 @@ export const getUserProfile = async (req, res) => {
     const user = userResult.rows[0];
     let roleData = {};
 
-    // 2. Fetch Role-Specific Data
+    
     if (user.role_type === "Specialist") {
       const result = await pool.query(
         "SELECT license_no, specialization FROM Specialists WHERE user_id = $1",
@@ -222,21 +219,20 @@ export const getUserProfile = async (req, res) => {
         [userId]
       );
       const volData = result.rows[0] || {};
-      // Calculate 'verified' boolean based on date existence
+      
       roleData = {
         proficiency_level: volData.proficiency_level,
         skills_verified: !!volData.verification_date 
       };
 
     } else if (user.role_type === "Owner") {
-      // Get Owner Type
+      
       const result = await pool.query(
         "SELECT legal_name, owner_type FROM Owners WHERE user_id = $1",
         [userId]
       );
       const ownerInfo = result.rows[0] || {};
 
-      // Get Property Count (Active Ownerships)
       const countRes = await pool.query(
         "SELECT COUNT(*) FROM building_ownership WHERE owner_id = $1 AND end_date IS NULL",
         [userId]
@@ -248,7 +244,6 @@ export const getUserProfile = async (req, res) => {
       };
     }
 
-    // 3. Merge and Return
     res.json({ ...user, ...roleData });
 
   } catch (err) {
