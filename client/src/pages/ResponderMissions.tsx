@@ -234,7 +234,7 @@ export const ResponderMissions = () => {
                     {status === 'on scene' && (
                         <Button 
                             className="w-full"
-                            variant="destructive" // Destructive or Success variant depending on your theme setup
+                            variant="destructive"
                             onClick={() => handleStatusUpdate(mission.assignment_id, 'Completed')}
                         >
                             <CheckCircle className="w-4 h-4 mr-2" />
