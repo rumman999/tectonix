@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 
+// 1. GET ALL BUILDINGS (Filtered by Role, Includes Unverified/NULL Risk)
 export const getBuildings = async (req, res) => {
   try {
     const { user_id, role } = req.user; 
@@ -18,7 +19,7 @@ export const getBuildings = async (req, res) => {
     `;
 
     if (role === 'Owner') {
-
+      // Owners: See only their active buildings
       query = `
         SELECT ${selectFields}
         FROM Buildings b
@@ -28,7 +29,7 @@ export const getBuildings = async (req, res) => {
       `;
       params = [user_id];
     } else {
-
+      // Specialists/Admins: See ALL buildings
       query = `
         SELECT ${selectFields} 
         FROM Buildings b 
@@ -45,16 +46,16 @@ export const getBuildings = async (req, res) => {
 
     res.json(buildings);
   } catch (err) {
-    console.error(err);
+    console.error("Get Buildings Error:", err);
     res.status(500).json({ error: "Server Error" });
   }
 };
 
+// 2. CREATE BUILDING (Transaction: Building + Ownership)
 export const createBuilding = async (req, res) => {
   const { building_name, address_text, construction_year, location_gps } = req.body;
   
   // 1. Validation: Only Owners can create
-  // req.user comes from verifyToken middleware
   const { user_id, role } = req.user; 
 
   if (role !== 'Owner') {
@@ -74,6 +75,7 @@ export const createBuilding = async (req, res) => {
       RETURNING building_id, building_name
     `;
     
+    // Note: location_gps comes from frontend as { lat: ..., lng: ... }
     const buildingResult = await client.query(buildingQuery, [
       building_name, 
       address_text, 
@@ -84,6 +86,7 @@ export const createBuilding = async (req, res) => {
 
     const newBuilding = buildingResult.rows[0];
 
+    // 3. Create Ownership Record
     const ownershipQuery = `
         INSERT INTO building_ownership (building_id, owner_id, start_date)
         VALUES ($1, $2, CURRENT_DATE)
@@ -104,6 +107,7 @@ export const createBuilding = async (req, res) => {
   }
 };
 
+// 3. GET OWNERSHIP HISTORY
 export const getOwnershipHistory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -123,7 +127,7 @@ export const getOwnershipHistory = async (req, res) => {
   }
 };
 
-
+// 4. GET PUBLIC BUILDING LIST (For Dropdowns/Calculators)
 export const getBuildingList = async (req, res) => {
   try {
     const result = await pool.query("SELECT building_id, building_name FROM Buildings ORDER BY created_at DESC");
@@ -134,6 +138,7 @@ export const getBuildingList = async (req, res) => {
   }
 };
 
+// 5. GET REPORTABLE BUILDINGS (For Damage Reports)
 export const getReportableBuildings = async (req, res) => {
   try {
     const { user_id, role } = req.user;
@@ -163,6 +168,7 @@ export const getReportableBuildings = async (req, res) => {
   }
 };
 
+// 6. UPDATE RISK SCORE
 export const updateRiskScore = async (req, res) => {
   const { id } = req.params;
   const { risk_score } = req.body;
@@ -181,6 +187,7 @@ export const updateRiskScore = async (req, res) => {
   }
 };
 
+// 7. TRANSFER OWNERSHIP
 export const transferOwnership = async (req, res) => {
   const { building_id, owner_id, start_date } = req.body;
   
@@ -188,12 +195,14 @@ export const transferOwnership = async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Close current ownership
     await client.query(`
       UPDATE building_ownership 
       SET end_date = $2 
       WHERE building_id = $1 AND end_date IS NULL
     `, [building_id, start_date]);
 
+    // Create new ownership
     await client.query(`
       INSERT INTO building_ownership (building_id, owner_id, start_date)
       VALUES ($1, $2, $3)
@@ -210,11 +219,46 @@ export const transferOwnership = async (req, res) => {
   }
 };
 
+// 8. GET ALL OWNERS
 export const getAllOwners = async (req, res) => {
   try {
     const result = await pool.query("SELECT user_id, legal_name FROM Owners ORDER BY legal_name ASC");
     res.json(result.rows);
   } catch (err) {
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// 9. GET PENDING ASSESSMENTS (Priority: Damage Reports -> Unverified)
+export const getPendingAssessments = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        b.building_id, 
+        b.building_name, 
+        b.address_text, 
+        b.construction_year, 
+        b.created_at as building_created_at,
+        dr.description as damage_description,
+        dr.image_proof_url as damage_image,
+        dr.severity_level,
+        dr.location_text as report_location,
+        CASE WHEN dr.report_id IS NOT NULL THEN TRUE ELSE FALSE END as has_damage
+      FROM Buildings b
+      LEFT JOIN (
+          SELECT DISTINCT ON (building_id) *
+          FROM damage_reports
+          ORDER BY building_id, created_at DESC
+      ) dr ON b.building_id = dr.building_id
+      WHERE b.risk_score IS NULL
+      ORDER BY has_damage DESC, b.created_at DESC
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("Fetch Pending Assessments Error:", err);
     res.status(500).json({ error: "Server Error" });
   }
 };

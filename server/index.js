@@ -14,6 +14,8 @@ import reportRoutes from "./routes/reportRoutes.js";
 import rescueRoutes from "./routes/rescueRoutes.js";
 import { updateMaterialRates } from './jobs/priceUpdater.js';
 
+
+
 dotenv.config();
 
 const app = express();
