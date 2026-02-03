@@ -205,6 +205,7 @@ const login = async (req, res) => {
         email: user.email,
         role_type: user.role_type,
         full_name: user.full_name,
+        role_type: user.role_type,
       },
     });
   } catch (err) {

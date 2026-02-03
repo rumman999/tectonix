@@ -16,42 +16,113 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
+// Define menu items with allowedRoles
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Radio, label: "Seismic Mode", href: "/seismic" },
-  { icon: ScanLine, label: "AI Scanner", href: "/scanner" },
-  { icon: Calculator, label: "Retrofit Calc", href: "/retrofit" },
-  { icon: FileWarning, label: "Report Damage", href: "/report" },
-  { icon: Shield, label: "Rescue Ops", href: "/rescue" },
-  { icon: Settings, label: "Settings", href: "/settings", roles: ["Citizen", "Specialist", "Owner", "Volunteer", "First_Responder"] },
-  { icon: Radio, label: "Emergency Beacon", href: "/beacon" },
-  { icon: Building2, label: "Building Asset Manager", href: "/buildings" },
-  { icon: ShieldCheck, label: "My Missions", href: "/my-mission" },
+    { 
+      icon: LayoutDashboard, 
+      label: "Dashboard", 
+      href: "/dashboard",
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+    },
+    { 
+      icon: Activity, 
+      label: "Seismic Mode", 
+      href: "/seismic",
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+    },
+    { 
+      icon: Radio, 
+      label: "Emergency Beacon", 
+      href: "/beacon",
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+    },
+    { 
+      icon: Calculator, 
+      label: "Retrofit Calc", 
+      href: "/retrofit",
+      allowedRoles: ["Owner"] 
+    },
+    { 
+      icon: FileWarning, 
+      label: "Damage Report", 
+      href: "/report",
+      allowedRoles: ["Owner"] 
+    },
+    { 
+      icon: Building2, 
+      label: "Asset Manager", 
+      href: "/buildings",
+      allowedRoles: ["Owner"] 
+    },
+    { 
+      icon: ShieldCheck, 
+      label: "My Missions", 
+      href: "/my-mission",
+      allowedRoles: ["Volunteer", "First_Responder"] 
+    },
+    { 
+      icon: ScanLine, 
+      label: "AI Scanner", 
+      href: "/scanner",
+      allowedRoles: ["Specialist"] 
+    },
+    { 
+      icon: Shield, 
+      label: "Rescue Coord", 
+      href: "/rescue",
+      allowedRoles: ["Specialist"] 
+    },
+    { 
+      icon: Settings, 
+      label: "Settings", 
+      href: "/settings",
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+    },
 ];
 
 interface DashboardSidebarProps {
   className?: string;
-  onLinkClick?: () => void; // New prop to close mobile menu
+  onLinkClick?: () => void; 
 }
 
 export const DashboardSidebar = ({ className, onLinkClick }: DashboardSidebarProps) => {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const [userRole, setUserRole] = useState<string>("");
+
+  // Retrieve user role from localStorage on mount
+  useEffect(() => {
+    const userString = localStorage.getItem("user");
+    if (userString) {
+      try {
+        const user = JSON.parse(userString);
+        // Ensure we read the correct field 'role_type'
+        setUserRole(user.role_type || ""); 
+      } catch (error) {
+        console.error("Error parsing user data", error);
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user"); // Clean up user data too
     navigate("/auth");
   };
+
+  // Filter items based on the current user's role
+  const filteredItems = menuItems.filter(item => 
+    !item.allowedRoles || (userRole && item.allowedRoles.includes(userRole))
+  );
 
   return (
     <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.4 }}
-      // REMOVED 'fixed' so the parent layout controls positioning
       className={cn(
         "h-full bg-sidebar border-r border-sidebar-border z-40 transition-all duration-300 flex flex-col",
         collapsed ? "w-20" : "w-64",
@@ -79,13 +150,13 @@ export const DashboardSidebar = ({ className, onLinkClick }: DashboardSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-2">
-        {menuItems.map((item) => {
+        {filteredItems.map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link
               key={item.href + item.label}
               to={item.href}
-              onClick={onLinkClick} // Close menu on click
+              onClick={onLinkClick} 
               className={cn(
                 "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group relative",
                 isActive
