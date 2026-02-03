@@ -1,9 +1,23 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Activity, Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, 
-  BadgeCheck, Award, Building2, Briefcase, Heart, ChevronDown 
+import {
+  Activity,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  User,
+  Phone,
+  BadgeCheck,
+  Award,
+  Building2,
+  Briefcase,
+  Heart,
+  ChevronDown,
+  Droplet,
+  UserCheck
 } from "lucide-react";
 import heroBackground from "@/assets/hero-bg.jpg";
 import axios from "axios";
@@ -49,7 +63,13 @@ const roleConfig = {
   },
 };
 
-const roles: UserRole[] = ["citizen", "specialist", "owner", "volunteer", "responder"];
+const roles: UserRole[] = [
+  "citizen",
+  "specialist",
+  "owner",
+  "volunteer",
+  "responder",
+];
 
 const specializations = [
   "Structural Engineering",
@@ -77,7 +97,7 @@ export const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  
+
   // Role-specific fields
   const [licenseNumber, setLicenseNumber] = useState("");
   const [specialization, setSpecialization] = useState("");
@@ -86,15 +106,15 @@ export const Auth = () => {
   const [badgeNumber, setBadgeNumber] = useState("");
   const [rank, setRank] = useState("");
   const [proficiency, setProficiency] = useState("");
+  const [bloodType, setBloodType] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); // Disable button
 
     // 1. Determine URL
-    const endpoint = isLogin
-      ? "/api/auth/login"
-      : "/api/auth/register";
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
 
     // 2. Map Frontend State -> Backend Database Columns
     // Backend expects: "Specialist" (Capitalized), Frontend has: "specialist" (lowercase)
@@ -106,20 +126,19 @@ export const Auth = () => {
     const payload = {
       email,
       password,
-      // Backend expects 'full_name', you have 'fullName'
       full_name: fullName,
       phone_number: phone,
       role_type: formattedRole,
 
-      // Specific Fields Mapping
-      // Backend Column : Frontend State
       license_no: licenseNumber,
       specialization: specialization,
       badge_no: badgeNumber,
       rank: rank,
-      legal_name: companyName, // Backend calls it 'legal_name'
+      legal_name: companyName,
       owner_type: ownerType,
-      proficiency_level: proficiency, // Backend calls it 'proficiency_level'
+      proficiency_level: proficiency,
+      blood_type: bloodType,
+      supervisor_id: supervisorId.trim() === "" ? null : supervisorId,
     };
 
     try {
@@ -183,7 +202,7 @@ export const Auth = () => {
         transition={{ duration: 0.5 }}
         className="relative z-10 w-full max-w-md mx-4"
       >
-        <motion.div 
+        <motion.div
           layout
           className="glass-card p-8 rounded-2xl border border-white/10"
           transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -247,10 +266,14 @@ export const Auth = () => {
                           }`}
                           whileHover={{ x: 4 }}
                         >
-                          <div className={`p-1.5 rounded-lg bg-gradient-to-r ${config.gradient}`}>
+                          <div
+                            className={`p-1.5 rounded-lg bg-gradient-to-r ${config.gradient}`}
+                          >
                             <Icon className="h-4 w-4 text-white" />
                           </div>
-                          <span className="text-foreground font-medium">{config.label}</span>
+                          <span className="text-foreground font-medium">
+                            {config.label}
+                          </span>
                           {role === r && (
                             <motion.div
                               layoutId="selectedCheck"
@@ -337,7 +360,11 @@ export const Auth = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
               </button>
             </div>
 
@@ -431,9 +458,13 @@ export const Auth = () => {
                             onChange={(e) => setSpecialization(e.target.value)}
                             className="w-full bg-muted/30 border border-blue-500/30 rounded-xl px-12 py-4 text-foreground focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
                           >
-                            <option value="" className="bg-card">Select Specialization</option>
+                            <option value="" className="bg-card">
+                              Select Specialization
+                            </option>
                             {specializations.map((s) => (
-                              <option key={s} value={s} className="bg-card">{s}</option>
+                              <option key={s} value={s} className="bg-card">
+                                {s}
+                              </option>
                             ))}
                           </select>
                           <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-400" />
@@ -482,9 +513,13 @@ export const Auth = () => {
                             onChange={(e) => setOwnerType(e.target.value)}
                             className="w-full bg-muted/30 border border-amber-500/30 rounded-xl px-12 py-4 text-foreground focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all appearance-none"
                           >
-                            <option value="" className="bg-card">Select Owner Type</option>
+                            <option value="" className="bg-card">
+                              Select Owner Type
+                            </option>
                             {ownerTypes.map((t) => (
-                              <option key={t} value={t} className="bg-card">{t}</option>
+                              <option key={t} value={t} className="bg-card">
+                                {t}
+                              </option>
                             ))}
                           </select>
                           <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-amber-400" />
@@ -494,54 +529,106 @@ export const Auth = () => {
                     )}
 
                     {/* Responder Fields */}
-                    {role === "responder" && (
-                      <motion.div
-                        key="responder-fields"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="space-y-4 overflow-hidden"
-                      >
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className="relative"
-                        >
-                          <input
-                            type="text"
-                            value={badgeNumber}
-                            onChange={(e) => setBadgeNumber(e.target.value)}
-                            className="peer w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all"
-                            placeholder="Badge Number"
-                          />
-                          <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-orange-400 peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
-                            Badge Number
-                          </label>
-                          <Award className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
-                        </motion.div>
+{role === "responder" && (
+  <motion.div
+    key="responder-fields"
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: "auto" }}
+    exit={{ opacity: 0, height: 0 }}
+    transition={{ duration: 0.25 }}
+    className="space-y-4 overflow-hidden"
+  >
+    {/* 1. Badge Number (Existing) */}
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.1 }}
+      className="relative"
+    >
+      <input
+        type="text"
+        value={badgeNumber}
+        onChange={(e) => setBadgeNumber(e.target.value)}
+        className="peer w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all"
+        placeholder="Badge Number"
+      />
+      <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-orange-400 peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+        Badge Number
+      </label>
+      <Award className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
+    </motion.div>
 
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.15 }}
-                          className="relative"
-                        >
-                          <input
-                            type="text"
-                            value={rank}
-                            onChange={(e) => setRank(e.target.value)}
-                            className="peer w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all"
-                            placeholder="Rank"
-                          />
-                          <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-orange-400 peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
-                            Rank
-                          </label>
-                          <BadgeCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
-                        </motion.div>
-                      </motion.div>
-                    )}
+    {/* 2. Rank (Existing) */}
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.15 }}
+      className="relative"
+    >
+      <input
+        type="text"
+        value={rank}
+        onChange={(e) => setRank(e.target.value)}
+        className="peer w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all"
+        placeholder="Rank"
+      />
+      <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-orange-400 peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+        Rank
+      </label>
+      <BadgeCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
+    </motion.div>
+
+    {/* --- INSERT YOUR NEW CODE HERE --- */}
+
+    {/* 3. Blood Type (New) */}
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.2 }}
+      className="relative"
+    >
+      <select
+        value={bloodType}
+        onChange={(e) => setBloodType(e.target.value)}
+        className="w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all appearance-none"
+      >
+        <option value="" className="bg-card">
+          Select Blood Type
+        </option>
+        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((t) => (
+          <option key={t} value={t} className="bg-card">
+            {t}
+          </option>
+        ))}
+      </select>
+      <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
+      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    </motion.div>
+
+    {/* 4. Supervisor ID (New) */}
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.25 }}
+      className="relative"
+    >
+      <input
+        type="text"
+        value={supervisorId}
+        onChange={(e) => setSupervisorId(e.target.value)}
+        className="peer w-full bg-muted/30 border border-destructive/30 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-destructive/50 focus:ring-2 focus:ring-destructive/20 transition-all"
+        placeholder="Supervisor ID (Optional)"
+      />
+      <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-orange-400 peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+        Supervisor ID (Optional)
+      </label>
+      <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400" />
+    </motion.div>
+    
+    {/* --- END OF INSERTION --- */}
+
+  </motion.div>
+)}
 
                     {/* Volunteer Fields */}
                     {role === "volunteer" && (
@@ -564,14 +651,19 @@ export const Auth = () => {
                             onChange={(e) => setProficiency(e.target.value)}
                             className="w-full bg-muted/30 border border-emerald-500/30 rounded-xl px-12 py-4 text-foreground focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none"
                           >
-                            <option value="" className="bg-card">Select Proficiency Level</option>
+                            <option value="" className="bg-card">
+                              Select Proficiency Level
+                            </option>
                             {proficiencyLevels.map((p) => (
-                              <option key={p} value={p} className="bg-card">{p}</option>
+                              <option key={p} value={p} className="bg-card">
+                                {p}
+                              </option>
                             ))}
                           </select>
                           <Heart className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-400" />
                           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         </motion.div>
+                        
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -587,7 +679,11 @@ export const Auth = () => {
               whileTap={{ scale: 0.98 }}
               className={`w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r ${currentRoleConfig.gradient} shadow-lg ${currentRoleConfig.shadow} flex items-center justify-center gap-2 transition-all mt-2 ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
             >
-              {loading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
+              {loading
+                ? "Processing..."
+                : isLogin
+                  ? "Sign In"
+                  : "Create Account"}
               {!loading && <ArrowRight className="h-5 w-5" />}
             </motion.button>
           </form>

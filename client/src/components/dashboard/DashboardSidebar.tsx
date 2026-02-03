@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Building2
+  Building2,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -27,6 +28,7 @@ const menuItems = [
   { icon: Settings, label: "Settings", href: "/settings", roles: ["Citizen", "Specialist", "Owner", "Volunteer", "First_Responder"] },
   { icon: Radio, label: "Emergency Beacon", href: "/beacon" },
   { icon: Building2, label: "Building Asset Manager", href: "/buildings" },
+  { icon: ShieldCheck, label: "My Missions", href: "/my-mission" },
 ];
 
 interface DashboardSidebarProps {
