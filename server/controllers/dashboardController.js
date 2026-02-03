@@ -56,7 +56,6 @@ export const getRecentLogs = async (req, res) => {
         id: row.vibe_id.toString().substring(0, 8),
         sensor: sensorType,
         location: row.zone_name || "Unknown Zone",
-        // CRITICAL: You must include these so the map has coordinates!
         lat: parseFloat(row.lat),
         lng: parseFloat(row.lng),
         status: row.intensity_pga > 1.0 ? "danger" : row.intensity_pga > 0.3 ? "warning" : "safe",
@@ -160,7 +159,6 @@ export const reportSeismicActivity = async (req, res) => {
 
         if (deviceCheck.rows.length > 0) {
             deviceId = deviceCheck.rows[0].device_id;
-            // Update last_active
             await client.query("UPDATE Devices SET last_active = NOW() WHERE device_id = $1", [deviceId]);
             if(user_id) {
                  await client.query("UPDATE Devices SET user_id = $2 WHERE device_id = $1", [deviceId, user_id]);

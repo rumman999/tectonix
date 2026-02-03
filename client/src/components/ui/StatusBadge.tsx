@@ -18,7 +18,7 @@ export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
       label: "Safe" 
     },
     danger: { 
-      style: "bg-red-600/15 text-red-600 border-red-600/30 hover:bg-red-600/25 animate-pulse", 
+      style: "bg-red-600/15 text-red-600 border-red-600/30 hover:bg-red-600/25 hover:bg-red-500/25", 
       label: "Danger" 
     },
 

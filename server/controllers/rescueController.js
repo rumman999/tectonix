@@ -28,12 +28,12 @@ export const getRescueFeed = async (req, res) => {
         FROM Disaster_Events 
         WHERE is_active = TRUE
         ORDER BY start_time DESC
-      `)
+      `),
     ]);
 
     res.json({
       beacons: beaconsRes.rows,
-      events: eventsRes.rows
+      events: eventsRes.rows,
     });
   } catch (err) {
     console.error(err);
@@ -74,7 +74,7 @@ export const assignPersonnel = async (req, res) => {
 
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const query = `
       INSERT INTO Rescue_Assignments 
@@ -85,19 +85,74 @@ export const assignPersonnel = async (req, res) => {
     for (const userId of responder_ids) {
       await client.query(query, [
         task_type,
-        task_type === 'Beacon' ? task_id : null,
-        task_type === 'Event' ? task_id : null,
-        userId
+        task_type === "Beacon" ? task_id : null,
+        task_type === "Event" ? task_id : null,
+        userId,
       ]);
     }
 
-    await client.query('COMMIT');
-    res.json({ message: `Assigned ${responder_ids.length} responders successfully.` });
+    await client.query("COMMIT");
+    res.json({
+      message: `Assigned ${responder_ids.length} responders successfully.`,
+    });
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error(err);
     res.status(500).json({ error: "Assignment failed" });
   } finally {
     client.release();
+  }
+};
+
+export const getMyAssignments = async (req, res) => {
+  const userId = req.user.user_id;
+  try {
+    const query = `
+      SELECT 
+        ra.assignment_id,
+        ra.task_type,
+        ra.status as assignment_status,
+        ra.assigned_at,
+        -- Beacon Details (if task_type = 'Beacon')
+        b.beacon_id,
+        ST_Y(b.active_gps::geometry) as beacon_lat, 
+        ST_X(b.active_gps::geometry) as beacon_lng,
+        u_victim.full_name as victim_name,
+        u_victim.phone_number as victim_phone,
+        -- Event Details (if task_type = 'Event')
+        e.event_id,
+        e.event_type,
+        e.magnitude,
+        ST_Y(e.epicenter_gps::geometry) as event_lat, 
+        ST_X(e.epicenter_gps::geometry) as event_lng
+      FROM Rescue_Assignments ra
+      LEFT JOIN Distress_Beacons b ON ra.beacon_id = b.beacon_id
+      LEFT JOIN Users u_victim ON b.user_id = u_victim.user_id
+      LEFT JOIN Disaster_Events e ON ra.event_id = e.event_id
+      WHERE ra.responder_user_id = $1 AND ra.status != 'Completed'
+      ORDER BY ra.assigned_at DESC
+    `;
+
+    const result = await pool.query(query, [userId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch assignments" });
+  }
+};
+
+export const updateAssignmentStatus = async (req, res) => {
+  const { assignment_id, status } = req.body;
+  // valid statuses: 'Pending', 'Accepted', 'En Route', 'On Scene', 'Completed'
+
+  try {
+    await pool.query(
+      `UPDATE Rescue_Assignments SET status = $1 WHERE assignment_id = $2 AND responder_user_id = $3`,
+      [status, assignment_id, req.user.id],
+    );
+    res.json({ message: "Status updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update status" });
   }
 };

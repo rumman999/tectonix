@@ -13,6 +13,7 @@ import DamageReport from "./pages/DamageReport";
 import RescueCoordinator from "./pages/RescueCoordinator";
 import NotFound from "./pages/NotFound";
 //import ProtectedRoute from "./components/ProtectedRoute";
+import { ResponderMissions } from "./pages/ResponderMissions";
 import BeaconView from "@/components/dashboard/BeaconView";
 import BuildingManager from "./pages/BuildingManager"
 import Settings from "./pages/Settings"
@@ -37,7 +38,9 @@ const App = () => (
           <Route path="/beacon" element={<BeaconView />} />
           <Route path="/buildings" element={<BuildingManager />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/my-mission" element={< ResponderMissions />} />
           <Route path="*" element={<NotFound />} />
+      
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
