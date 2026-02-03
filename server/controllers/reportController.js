@@ -25,6 +25,13 @@ export const createDamageReport = async (req, res) => {
       imagePath
     ]);
 
+    if (bId) {
+      await pool.query(
+        `UPDATE Buildings SET risk_score = NULL WHERE building_id = $1`,
+        [bId]
+      );
+    }
+
     res.status(201).json({ message: "Report submitted successfully" });
 
   } catch (err) {

@@ -45,10 +45,20 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
+// --- INTERFACES ---
+interface Building {
+  building_id: number | string; // Adjust based on DB (likely string/UUID or number)
+  building_name: string;
+  location_gps: { lat: number; lng: number };
+  address_text: string;
+  construction_year: number;
+  risk_score: number | null;
+}
+
 interface BuildingOwnership {
-  ownership_id: number;
-  building_id: number;
-  owner_id: string; // UUID
+  ownership_id: number | string;
+  building_id: number | string;
+  owner_id: string;
   owner_name: string;
   start_date: string;
   end_date: string | null;
@@ -71,60 +81,7 @@ interface AIScan {
   scan_timestamp: string;
 }
 
-const mockBuildings: Building[] = [
-  {
-    building_id: "bld-001",
-    building_name: "Jamuna Future Park",
-    location_gps: { lat: 23.813, lng: 90.424 },
-    address_text: "Ka-244, Kuril, Progoti Sarani, Dhaka",
-    construction_year: 2012,
-    risk_score: 15,
-  },
-  {
-    building_id: "bld-002",
-    building_name: "Bashundhara City",
-    location_gps: { lat: 23.751, lng: 90.392 },
-    address_text: "Panthapath, Dhaka 1215",
-    construction_year: 2004,
-    risk_score: 22,
-  },
-  {
-    building_id: "bld-003",
-    building_name: "RAJUK Bhaban",
-    location_gps: { lat: 23.728, lng: 90.412 },
-    address_text: "Motijheel C/A, Dhaka 1000",
-    construction_year: 1985,
-    risk_score: 45,
-  },
-  {
-    building_id: "bld-004",
-    building_name: "Dhaka Medical Complex",
-    location_gps: { lat: 23.726, lng: 90.396 },
-    address_text: "Secretariat Road, Dhaka 1000",
-    construction_year: 1962,
-    risk_score: 78,
-  },
-];
-
-const mockOwnerships: BuildingOwnership[] = [
-  {
-    ownership_id: "own-001",
-    building_id: "bld-001",
-    owner_id: "usr-101",
-    owner_name: "Jamuna Group Ltd.",
-    start_date: "2012-01-15",
-    end_date: null,
-  },
-  {
-    ownership_id: "own-002",
-    building_id: "bld-002",
-    owner_id: "usr-102",
-    owner_name: "East West Property",
-    start_date: "2004-06-20",
-    end_date: null,
-  },
-];
-
+// --- MOCK DATA (Optional Fallback) ---
 const mockScans: AIScan[] = [
   {
     scan_id: "scn-001",
@@ -137,44 +94,20 @@ const mockScans: AIScan[] = [
     verified_status: true,
     scan_timestamp: "2025-01-10T14:32:00",
   },
-  {
-    scan_id: "scn-002",
-    building_id: "bld-001",
-    specialist_id: "spc-202",
-    image_url: "/scan-002.jpg",
-    original_width: 1920,
-    original_height: 1080,
-    ai_confidence_score: 0.87,
-    verified_status: false,
-    scan_timestamp: "2025-01-08T09:15:00",
-  },
-  {
-    scan_id: "scn-003",
-    building_id: "bld-003",
-    specialist_id: "spc-201",
-    image_url: "/scan-003.jpg",
-    original_width: 1920,
-    original_height: 1080,
-    ai_confidence_score: 0.45,
-    verified_status: true,
-    scan_timestamp: "2025-01-05T16:45:00",
-  },
+  // ... more mock data if needed
 ];
 
-const mockOwners = [
-  { owner_id: "usr-101", name: "Jamuna Group Ltd." },
-  { owner_id: "usr-102", name: "East West Property" },
-  { owner_id: "usr-103", name: "Delta Holdings" },
-  { owner_id: "usr-104", name: "Navana Real Estate" },
-];
-
-const getRiskColor = (score: number) => {
+// --- HELPER FUNCTIONS ---
+const getRiskColor = (score: number | null) => {
+  if (score === null) return "text-muted-foreground";
   if (score < 30) return "text-success";
   if (score < 60) return "text-warning";
   return "text-destructive";
 };
 
-const getRiskBadge = (score: number) => {
+const getRiskBadge = (score: number | null) => {
+  if (score === null)
+    return <StatusBadge status="neutral">Unverified</StatusBadge>; // Verify status badge supports 'neutral' or use standard CSS
   if (score < 30) return <StatusBadge status="safe">Low Risk</StatusBadge>;
   if (score < 60) return <StatusBadge status="warning">Moderate</StatusBadge>;
   return (
@@ -185,14 +118,15 @@ const getRiskBadge = (score: number) => {
 };
 
 export const BuildingManager = () => {
-  const [buildings, setBuildings] = useState<Building[]>([]); // Real Data
+  // --- STATE ---
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
   const [ownershipHistory, setOwnershipHistory] = useState<BuildingOwnership[]>(
     [],
-  ); // Real Data
-  const [ownerOptions, setOwnerOptions] = useState<OwnerOption[]>([]); // For Dropdown
+  );
+  const [ownerOptions, setOwnerOptions] = useState<OwnerOption[]>([]);
 
   const [activeTab, setActiveTab] = useState<"details" | "ownership" | "scans">(
     "details",
@@ -200,7 +134,6 @@ export const BuildingManager = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
-
 
   const [newBuilding, setNewBuilding] = useState({
     building_name: "",
@@ -210,16 +143,17 @@ export const BuildingManager = () => {
     location_gps_lng: 0,
   });
 
-
   const [transfer, setTransfer] = useState({
     owner_id: "",
     start_date: "",
   });
 
+  // Filter scans for selected building
   const buildingScans = selectedBuilding
     ? mockScans.filter((s) => s.building_id === selectedBuilding.building_id)
     : [];
 
+  // --- API CALLS ---
   const fetchBuildings = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/buildings`, {
@@ -235,7 +169,6 @@ export const BuildingManager = () => {
     fetchBuildings();
   }, []);
 
-
   useEffect(() => {
     if (selectedBuilding && activeTab === "ownership") {
       const fetchOwnership = async () => {
@@ -246,7 +179,6 @@ export const BuildingManager = () => {
           );
           setOwnershipHistory(res.data);
 
-      
           const ownersRes = await axios.get(
             `${API_BASE_URL}/api/buildings/owners`,
             { headers: getHeaders() },
@@ -261,6 +193,18 @@ export const BuildingManager = () => {
   }, [selectedBuilding, activeTab]);
 
   const handleAddBuilding = async () => {
+    if (
+      !newBuilding.building_name ||
+      !newBuilding.address_text ||
+      !newBuilding.construction_year ||
+      !newBuilding.location_gps_lat ||
+      !newBuilding.location_gps_lng
+    ) {
+      alert(
+        "Please fill in all fields (Name, Address, Year, and GPS Coordinates).",
+      );
+      return;
+    }
     try {
       const payload = {
         building_name: newBuilding.building_name,
@@ -291,6 +235,27 @@ export const BuildingManager = () => {
     }
   };
 
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNewBuilding((prev) => ({
+          ...prev,
+          location_gps_lat: parseFloat(pos.coords.latitude.toFixed(6)),
+          location_gps_lng: parseFloat(pos.coords.longitude.toFixed(6)),
+        }));
+      },
+      (err) => {
+        console.error(err);
+        alert("Unable to retrieve location. Please allow GPS access.");
+      },
+    );
+  };
+
   const handleTransferOwnership = async () => {
     try {
       const payload = {
@@ -306,7 +271,6 @@ export const BuildingManager = () => {
       setShowTransferModal(false);
       setTransfer({ owner_id: "", start_date: "" });
 
-      // Refresh ownership list
       if (selectedBuilding) {
         const res = await axios.get(
           `${API_BASE_URL}/api/buildings/${selectedBuilding.building_id}/ownership`,
@@ -384,7 +348,6 @@ export const BuildingManager = () => {
         {/* Split View */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
           {/* Building List (Left Column) */}
-          {/* Logic: Hidden on mobile if viewing details. Always shown on desktop. */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -433,11 +396,11 @@ export const BuildingManager = () => {
                             Est. {building.construction_year}
                           </span>
                           <span
-                            className={`text-xs font-medium ${getRiskColor(
-                              building.risk_score,
-                            )}`}
+                            className={`text-xs font-medium ${getRiskColor(building.risk_score)}`}
                           >
-                            Risk: {building.risk_score}%
+                            {building.risk_score !== null
+                              ? `Risk: ${building.risk_score}%`
+                              : "Risk: Unverified"}
                           </span>
                         </div>
                       </div>
@@ -450,7 +413,6 @@ export const BuildingManager = () => {
           </motion.div>
 
           {/* Building Details (Right Column) */}
-          {/* Logic: Hidden on mobile if viewing list. Always shown on desktop. */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -562,11 +524,15 @@ export const BuildingManager = () => {
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{
-                                  width: `${selectedBuilding.risk_score}%`,
+                                  // FIX: Use 'selectedBuilding' instead of 'building'
+                                  width: selectedBuilding.risk_score !== null ? `${selectedBuilding.risk_score}%` : "0%",
                                 }}
                                 transition={{ duration: 0.8 }}
                                 className={`h-full rounded-full ${
-                                  selectedBuilding.risk_score < 30
+                                  // FIX: Use 'selectedBuilding' here too
+                                  selectedBuilding.risk_score === null
+                                    ? "bg-muted"
+                                    : selectedBuilding.risk_score < 30
                                     ? "bg-success"
                                     : selectedBuilding.risk_score < 60
                                     ? "bg-warning"
@@ -576,10 +542,12 @@ export const BuildingManager = () => {
                             </div>
                             <span
                               className={`font-bold ${getRiskColor(
-                                selectedBuilding.risk_score,
+                                selectedBuilding.risk_score
                               )}`}
                             >
-                              {selectedBuilding.risk_score}%
+                              {selectedBuilding.risk_score !== null
+                                ? `${selectedBuilding.risk_score}%`
+                                : "N/A"}
                             </span>
                           </div>
                         </div>
@@ -607,7 +575,6 @@ export const BuildingManager = () => {
                             Transfer Ownership
                           </button>
                         </div>
-                        {/* Change buildingOwnerships.length to ownershipHistory.length */}
                         {ownershipHistory.length > 0 ? (
                           ownershipHistory.map((ownership) => (
                             <div
@@ -633,7 +600,6 @@ export const BuildingManager = () => {
                               <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-4 text-sm">
                                 <span className="text-muted-foreground flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {/* Use new Date() to format the DB timestamp */}
                                   Start:{" "}
                                   {new Date(
                                     ownership.start_date,
@@ -716,8 +682,8 @@ export const BuildingManager = () => {
                                       scan.ai_confidence_score >= 0.8
                                         ? "text-success"
                                         : scan.ai_confidence_score >= 0.6
-                                        ? "text-warning"
-                                        : "text-destructive"
+                                          ? "text-warning"
+                                          : "text-destructive"
                                     }`}
                                   >
                                     {(scan.ai_confidence_score * 100).toFixed(
@@ -841,44 +807,65 @@ export const BuildingManager = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="location_gps_lat" className="text-foreground">
-                  Latitude
-                </Label>
-                <Input
-                  id="location_gps_lat"
-                  type="number"
-                  step="0.000001"
-                  value={newBuilding.location_gps_lat}
-                  onChange={(e) =>
-                    setNewBuilding({
-                      ...newBuilding,
-                      location_gps_lat: parseFloat(e.target.value),
-                    })
-                  }
-                  placeholder="23.8103"
-                  className="mt-1.5 bg-muted/30 border-white/10"
-                />
+            {/* --- UPDATED COORDINATES SECTION --- */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground">Coordinates</Label>
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors bg-primary/10 px-2 py-1 rounded-md"
+                >
+                  <MapPin className="h-3 w-3" />
+                  Use GPS
+                </button>
               </div>
-              <div>
-                <Label htmlFor="location_gps_lng" className="text-foreground">
-                  Longitude
-                </Label>
-                <Input
-                  id="location_gps_lng"
-                  type="number"
-                  step="0.000001"
-                  value={newBuilding.location_gps_lng}
-                  onChange={(e) =>
-                    setNewBuilding({
-                      ...newBuilding,
-                      location_gps_lng: parseFloat(e.target.value),
-                    })
-                  }
-                  placeholder="90.4125"
-                  className="mt-1.5 bg-muted/30 border-white/10"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label
+                    htmlFor="location_gps_lat"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Latitude
+                  </Label>
+                  <Input
+                    id="location_gps_lat"
+                    type="number"
+                    step="0.000001"
+                    value={newBuilding.location_gps_lat}
+                    onChange={(e) =>
+                      setNewBuilding({
+                        ...newBuilding,
+                        location_gps_lat: parseFloat(e.target.value),
+                      })
+                    }
+                    placeholder="23.8103"
+                    className="mt-1 bg-muted/30 border-white/10"
+                  />
+                </div>
+                <div>
+                  <Label
+                    htmlFor="location_gps_lng"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Longitude
+                  </Label>
+                  <Input
+                    id="location_gps_lng"
+                    type="number"
+                    step="0.000001"
+                    value={newBuilding.location_gps_lng}
+                    onChange={(e) =>
+                      setNewBuilding({
+                        ...newBuilding,
+                        location_gps_lng: parseFloat(e.target.value),
+                      })
+                    }
+                    placeholder="90.4125"
+                    className="mt-1 bg-muted/30 border-white/10"
+                  />
+                </div>
               </div>
             </div>
 

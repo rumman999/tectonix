@@ -516,7 +516,6 @@ const handleSaveEstimate = async () => {
               </motion.div>
             )}
 
-            {/* Step 3: Dynamic Line Items */}
             {step === 3 && (
               <motion.div
                 key="step3"
@@ -575,7 +574,7 @@ const handleSaveEstimate = async () => {
                                   handleMaterialChange(item.temp_id, value)
                                 }
                               >
-                                <SelectTrigger className="bg-muted/30 border-white/10">
+                                <SelectTrigger className="bg-muted/30 border-white/10 ml-1">
                                   <SelectValue placeholder="Select material" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-white/10">
@@ -608,10 +607,10 @@ const handleSaveEstimate = async () => {
                               />
                             </td>
                             <td className="py-3 text-center text-muted-foreground">
-                              ${getMaterialPrice(item.material_id).toFixed(2)}
+                              ৳{getMaterialPrice(item.material_id).toFixed(2)}
                             </td>
                             <td className="py-3 text-right font-medium text-foreground">
-                              $
+                              ৳
                               {item.subtotal.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
@@ -741,7 +740,7 @@ const handleSaveEstimate = async () => {
                       key={displayedCost}
                       className="text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent"
                     >
-                      ${displayedCost.toLocaleString()}
+                      ৳{displayedCost.toLocaleString()}
                     </motion.div>
                     <p className="text-sm text-muted-foreground mt-4">
                       *Based on current market rates. Actual costs may vary.

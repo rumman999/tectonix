@@ -4,8 +4,6 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import {
   Activity,
-  Upload,
-  Camera,
   MapPin,
   AlertTriangle,
   CheckCircle,
@@ -13,21 +11,32 @@ import {
   Image as ImageIcon,
   Menu,
   Loader2,
-  Building2 // Added Icon
+  Building2,
+  Check,
+  ChevronsUpDown,
+  Search
 } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL, getHeaders } from "@/config";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // Added Select Components
 
+// --- NEW IMPORTS FOR SEARCHABLE DROPDOWN ---
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils"; 
 
 interface Building {
   building_id: number;
@@ -43,9 +52,10 @@ export const DamageReport = () => {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   
-  
+  // Building Data State
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>("");
+  const [isBuildingOpen, setIsBuildingOpen] = useState(false); 
 
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -55,11 +65,10 @@ export const DamageReport = () => {
   const progressRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/buildings/list`, { headers: getHeaders() });
+        const res = await axios.get(`${API_BASE_URL}/api/buildings/reportable`, { headers: getHeaders() });
         setBuildings(res.data);
       } catch (err) {
         console.error("Failed to load buildings");
@@ -110,9 +119,18 @@ export const DamageReport = () => {
   };
 
   const submitReport = async () => {
-    // Basic validation (Building is optional, but description/location are needed)
-    if (!description || !location) {
-        toast({ title: "Missing Info", description: "Please provide a description and location.", variant: "destructive" });
+    // --- UPDATED VALIDATION LOGIC ---
+    
+    // 1. Description is required
+    if (!description) {
+        toast({ title: "Missing Description", description: "Please describe the damage.", variant: "destructive" });
+        setHoldProgress(0);
+        return;
+    }
+
+    // 2. Building selection is required IF the user has buildings available to select (Owner/Specialist)
+    if (buildings.length > 0 && !selectedBuildingId) {
+        toast({ title: "Building Required", description: "Please select the affected building from the list.", variant: "destructive" });
         setHoldProgress(0);
         return;
     }
@@ -122,9 +140,8 @@ export const DamageReport = () => {
     try {
         const formData = new FormData();
         formData.append("description", description);
-        formData.append("location", location);
+        formData.append("location", location); 
         formData.append("severity", severity.toString());
-        
         
         if (selectedBuildingId) {
             formData.append("building_id", selectedBuildingId);
@@ -193,7 +210,6 @@ export const DamageReport = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-50">
         <div className="flex items-center gap-2 font-bold text-lg">
@@ -317,29 +333,62 @@ export const DamageReport = () => {
               )}
             </motion.div>
 
-            {/* Building Selector (New) */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <label className="block text-sm font-medium text-foreground mb-2">Affected Building (Optional)</label>
-              <Select value={selectedBuildingId} onValueChange={setSelectedBuildingId}>
-                <SelectTrigger className="bg-muted/20 border-white/10 h-12">
-                  <SelectValue placeholder="Select a specific building" />
-                </SelectTrigger>
-                <SelectContent>
-                  {buildings.length > 0 ? (
-                    buildings.map((b) => (
-                      <SelectItem key={b.building_id} value={String(b.building_id)}>
-                        <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-muted-foreground" />
-                            {b.building_name}
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-xs text-muted-foreground">No buildings found</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </motion.div>
+            {/* Building Searchable Dropdown (Only visible if buildings exist) */}
+            {buildings.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <label className="block text-sm font-medium text-foreground mb-2">Affected Building <span className="text-destructive">*</span></label>
+                <Popover open={isBuildingOpen} onOpenChange={setIsBuildingOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isBuildingOpen}
+                      className="w-full justify-between bg-muted/20 border-white/10 h-12 text-foreground font-normal hover:bg-muted/30 hover:text-foreground"
+                    >
+                      {selectedBuildingId
+                        ? buildings.find((b) => String(b.building_id) === selectedBuildingId)?.building_name
+                        : "Select or search building..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-slate-900 border-white/10 text-white">
+                    <Command className="bg-transparent">
+                      <div className="flex items-center border-b border-white/10 px-3" cmdk-input-wrapper="">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <CommandInput 
+                            placeholder="Search buildings..." 
+                            className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </div>
+                      <CommandList>
+                        <CommandEmpty>No building found.</CommandEmpty>
+                        <CommandGroup>
+                          {buildings.map((building) => (
+                            <CommandItem
+                              key={building.building_id}
+                              value={building.building_name} // Search by name
+                              onSelect={() => {
+                                setSelectedBuildingId(String(building.building_id));
+                                setIsBuildingOpen(false);
+                              }}
+                              className="aria-selected:bg-primary/20 aria-selected:text-white"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4 text-primary",
+                                  selectedBuildingId === String(building.building_id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {building.building_name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </motion.div>
+            )}
 
             {/* Location */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
@@ -364,7 +413,7 @@ export const DamageReport = () => {
 
             {/* Description */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-              <label className="block text-sm font-medium text-foreground mb-2">Description</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Description <span className="text-destructive">*</span></label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -377,7 +426,7 @@ export const DamageReport = () => {
             {/* Severity */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-foreground">Severity Level</label>
+                <label className="text-sm font-medium text-foreground">Severity Level <span className="text-destructive">*</span></label>
                 <span className={`text-sm font-bold bg-gradient-to-r ${getSeverityColor()} bg-clip-text text-transparent`}>
                   {getSeverityLabel()}
                 </span>
