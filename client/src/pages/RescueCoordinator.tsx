@@ -3,25 +3,13 @@ import axios from "axios";
 import { API_BASE_URL, getHeaders } from "@/config";
 import { motion } from "framer-motion";
 import {
-  Siren,
-  Flame,
-  Radio,
-  Users,
-  CheckCircle,
-  MapPin,
-  Clock,
-  ShieldAlert,
-  Menu
+  Siren, Flame, Radio, Users, CheckCircle, MapPin, Clock, ShieldAlert, Menu, XCircle
 } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +27,7 @@ interface Beacon {
 
 interface DisasterEvent {
   event_id: string;
-  event_type: string; // 'Earthquake', 'Fire'
+  event_type: string;
   magnitude: number;
   start_time: string;
   lat: number;
@@ -50,8 +38,8 @@ interface Responder {
   user_id: string;
   full_name: string;
   role_type: string;
-  rank?: string; // Only for First Responders
-  proficiency_level?: string; // Only for Volunteers
+  rank?: string;
+  proficiency_level?: string;
 }
 
 export const RescueCoordinator = () => {
@@ -71,14 +59,12 @@ export const RescueCoordinator = () => {
   const [selectedResponderIds, setSelectedResponderIds] = useState<string[]>([]);
   const [assigning, setAssigning] = useState(false);
 
-
   const fetchData = async () => {
     try {
       const [feedRes, staffRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/rescue/feed`, { headers: getHeaders() }),
         axios.get(`${API_BASE_URL}/api/rescue/personnel`, { headers: getHeaders() })
       ]);
-      
       setBeacons(feedRes.data.beacons);
       setEvents(feedRes.data.events);
       setPersonnel(staffRes.data);
@@ -91,22 +77,41 @@ export const RescueCoordinator = () => {
 
   useEffect(() => {
     fetchData();
-    // Optional: Poll every 30 seconds
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Open Assignment Modal
+  // --- NEW: Handle Resolve ---
+  const handleResolve = async (type: 'Beacon' | 'Event', id: string) => {
+    try {
+      await axios.post(
+        `${API_BASE_URL}/api/rescue/resolve`,
+        { type, id },
+        { headers: getHeaders() }
+      );
+      
+      toast({ title: "Resolved", description: `${type} marked as resolved.` });
+      
+      // Remove from UI immediately
+      if (type === 'Beacon') {
+        setBeacons(prev => prev.filter(b => b.beacon_id !== id));
+      } else {
+        setEvents(prev => prev.filter(e => e.event_id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to resolve alert.", variant: "destructive" });
+    }
+  };
+
   const openAssignModal = (type: 'Beacon' | 'Event', id: string) => {
     setSelectedTask({ type, id });
     setSelectedResponderIds([]);
     setIsAssignOpen(true);
   };
 
-  // 3. Handle Assignment
   const handleAssignSubmit = async () => {
     if (!selectedTask || selectedResponderIds.length === 0) return;
-
     setAssigning(true);
     try {
       await axios.post(
@@ -118,22 +123,15 @@ export const RescueCoordinator = () => {
         },
         { headers: getHeaders() }
       );
-
-      toast({ 
-        title: "Deployment Successful", 
-        description: `Assigned ${selectedResponderIds.length} responders.`,
-        className: "bg-green-600 text-white"
-      });
+      toast({ title: "Deployment Successful", description: `Assigned ${selectedResponderIds.length} responders.`, className: "bg-green-600 text-white" });
       setIsAssignOpen(false);
     } catch (err) {
-      console.error(err);
       toast({ title: "Assignment Failed", description: "Could not assign responders.", variant: "destructive" });
     } finally {
       setAssigning(false);
     }
   };
 
-  // Toggle Selection in Modal
   const toggleResponder = (userId: string) => {
     setSelectedResponderIds(prev => 
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
@@ -203,12 +201,22 @@ export const RescueCoordinator = () => {
                   <MapPin className="w-4 h-4" /> 
                   {beacon.lat.toFixed(4)}, {beacon.lng.toFixed(4)}
                 </div>
-                <Button 
-                    onClick={() => openAssignModal('Beacon', beacon.beacon_id)}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <Users className="w-4 h-4 mr-2" /> Assign Responders
-                </Button>
+                
+                <div className="flex gap-2">
+                    <Button 
+                        onClick={() => openAssignModal('Beacon', beacon.beacon_id)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    >
+                        <Users className="w-4 h-4 mr-2" /> Assign
+                    </Button>
+                    <Button 
+                        variant="outline"
+                        onClick={() => handleResolve('Beacon', beacon.beacon_id)}
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                    >
+                        <CheckCircle className="w-4 h-4 mr-2" /> Resolve
+                    </Button>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -245,55 +253,52 @@ export const RescueCoordinator = () => {
                    <MapPin className="w-4 h-4" /> 
                    {event.lat?.toFixed(4) || 'Unknown'}, {event.lng?.toFixed(4) || 'Unknown'}
                 </div>
-                <Button 
-                    onClick={() => openAssignModal('Event', event.event_id)}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-                >
-                  <Users className="w-4 h-4 mr-2" /> Dispatch Teams
-                </Button>
+                
+                <div className="flex gap-2">
+                    <Button 
+                        onClick={() => openAssignModal('Event', event.event_id)}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                        <Users className="w-4 h-4 mr-2" /> Dispatch
+                    </Button>
+                    <Button 
+                        variant="outline"
+                        onClick={() => handleResolve('Event', event.event_id)}
+                        className="border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+                    >
+                        <CheckCircle className="w-4 h-4 mr-2" /> Resolve
+                    </Button>
+                </div>
               </motion.div>
             ))}
           </div>
         </div>
 
-        {/* --- ASSIGNMENT MODAL --- */}
+        {/* ASSIGNMENT MODAL (Unchanged) */}
         <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
           <DialogContent className="bg-slate-900 border-white/10 text-white max-h-[80vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Deploy Personnel</DialogTitle>
-            </DialogHeader>
-            
+            <DialogHeader><DialogTitle>Deploy Personnel</DialogTitle></DialogHeader>
             <div className="flex-1 overflow-y-auto p-1 space-y-2 my-2">
-               {personnel.length === 0 && (
-                  <p className="text-center text-muted-foreground py-4">No personnel available.</p>
-               )}
+               {personnel.length === 0 && <p className="text-center text-muted-foreground py-4">No personnel available.</p>}
                {personnel.map(p => (
                  <div 
                     key={p.user_id} 
                     className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedResponderIds.includes(p.user_id) 
-                        ? 'bg-primary/20 border-primary' 
-                        : 'bg-muted/10 border-white/5 hover:bg-muted/20'
+                        selectedResponderIds.includes(p.user_id) ? 'bg-primary/20 border-primary' : 'bg-muted/10 border-white/5 hover:bg-muted/20'
                     }`}
                     onClick={() => toggleResponder(p.user_id)}
                  >
                     <div className="flex items-center gap-3">
-                        <Checkbox 
-                            checked={selectedResponderIds.includes(p.user_id)} 
-                            onCheckedChange={() => toggleResponder(p.user_id)}
-                        />
+                        <Checkbox checked={selectedResponderIds.includes(p.user_id)} onCheckedChange={() => toggleResponder(p.user_id)}/>
                         <div>
                             <p className="font-medium text-sm">{p.full_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {p.role_type} • {p.rank || p.proficiency_level || 'General'}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{p.role_type} • {p.rank || p.proficiency_level || 'General'}</p>
                         </div>
                     </div>
                     {selectedResponderIds.includes(p.user_id) && <CheckCircle className="w-4 h-4 text-primary" />}
                  </div>
                ))}
             </div>
-
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsAssignOpen(false)}>Cancel</Button>
               <Button onClick={handleAssignSubmit} disabled={selectedResponderIds.length === 0 || assigning}>
@@ -302,7 +307,6 @@ export const RescueCoordinator = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
       </main>
     </div>
   );

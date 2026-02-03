@@ -132,6 +132,9 @@ export const ResponderMissions = () => {
             const isBeacon = mission.task_type === 'Beacon';
             const lat = isBeacon ? mission.beacon_lat : mission.event_lat;
             const lng = isBeacon ? mission.beacon_lng : mission.event_lng;
+            
+            // Normalize status for easier checking
+            const status = mission.assignment_status.trim().toLowerCase();
 
             return (
               <motion.div
@@ -188,7 +191,7 @@ export const ResponderMissions = () => {
                 {/* Actions */}
                 <div className="grid grid-cols-2 gap-3">
                     <Button 
-                        variant="outline" 
+                        variant="secondary" 
                         className="w-full"
                         onClick={() => openMaps(lat, lng)}
                     >
@@ -196,36 +199,42 @@ export const ResponderMissions = () => {
                         Navigate
                     </Button>
                     
-                    {mission.assignment_status === 'Pending' && (
+                    {/* STATUS BUTTONS - Theme Matched & Fixed Logic */}
+                    
+                    {(status === 'assigned' || status === 'pending') && (
                         <Button 
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full" 
+                            variant="default" // Uses Primary Theme Color
                             onClick={() => handleStatusUpdate(mission.assignment_id, 'Accepted')}
                         >
                             Accept Mission
                         </Button>
                     )}
 
-                    {mission.assignment_status === 'Accepted' && (
+                    {status === 'accepted' && (
                         <Button 
-                            className="w-full bg-amber-600 hover:bg-amber-700"
+                            className="w-full"
+                            variant="default"
                             onClick={() => handleStatusUpdate(mission.assignment_id, 'En Route')}
                         >
                             Start Route
                         </Button>
                     )}
 
-                    {mission.assignment_status === 'En Route' && (
+                    {status === 'en route' && (
                         <Button 
-                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            className="w-full"
+                            variant="default"
                             onClick={() => handleStatusUpdate(mission.assignment_id, 'On Scene')}
                         >
                             Arrive at Scene
                         </Button>
                     )}
 
-                    {mission.assignment_status === 'On Scene' && (
+                    {status === 'on scene' && (
                         <Button 
-                            className="w-full bg-green-600 hover:bg-green-700"
+                            className="w-full"
+                            variant="destructive" // Destructive or Success variant depending on your theme setup
                             onClick={() => handleStatusUpdate(mission.assignment_id, 'Completed')}
                         >
                             <CheckCircle className="w-4 h-4 mr-2" />

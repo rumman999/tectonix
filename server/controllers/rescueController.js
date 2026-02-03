@@ -155,3 +155,45 @@ export const updateAssignmentStatus = async (req, res) => {
     res.status(500).json({ error: "Failed to update status" });
   }
 };
+
+export const resolveAlert = async (req, res) => {
+  const { type, id } = req.body; // type: 'Beacon' | 'Event'
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (type === 'Beacon') {
+      // 1. Mark Beacon as Resolved
+      await client.query(
+        `UPDATE Distress_Beacons SET status = 'Resolved' WHERE beacon_id = $1`,
+        [id]
+      );
+      // 2. Mark all assignments for this beacon as Completed
+      await client.query(
+        `UPDATE Rescue_Assignments SET status = 'Completed' WHERE beacon_id = $1`,
+        [id]
+      );
+    } else if (type === 'Event') {
+      // 1. Mark Event as Inactive
+      await client.query(
+        `UPDATE Disaster_Events SET is_active = FALSE WHERE event_id = $1`,
+        [id]
+      );
+       // 2. Mark all assignments for this event as Completed
+       await client.query(
+        `UPDATE Rescue_Assignments SET status = 'Completed' WHERE event_id = $1`,
+        [id]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: "Alert resolved successfully" });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: "Failed to resolve alert" });
+  } finally {
+    client.release();
+  }
+};
