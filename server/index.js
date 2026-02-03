@@ -13,13 +13,17 @@ import estimateRoutes from "./routes/estimateRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import rescueRoutes from "./routes/rescueRoutes.js";
 import { updateMaterialRates } from './jobs/priceUpdater.js';
-
-
+import { getBuildingSoilData } from "./controllers/sensorController.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 app.use(cors({
@@ -41,6 +45,10 @@ app.use("/api/scanner", aiRoutes);
 app.use("/api/estimates", estimateRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/rescue", rescueRoutes);
+
+app.get("/api/sensors/building/:buildingId", getBuildingSoilData);
+
+app.use('/uploads', express.static('/home/spycakes/code/tectonix/server/uploads'));
 
 updateMaterialRates();
 

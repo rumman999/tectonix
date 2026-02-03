@@ -229,7 +229,6 @@ export const getAllOwners = async (req, res) => {
   }
 };
 
-// 9. GET PENDING ASSESSMENTS (Priority: Damage Reports -> Unverified)
 export const getPendingAssessments = async (req, res) => {
   try {
     const query = `
@@ -247,8 +246,8 @@ export const getPendingAssessments = async (req, res) => {
       FROM Buildings b
       LEFT JOIN (
           SELECT DISTINCT ON (building_id) *
-          FROM damage_reports
-          ORDER BY building_id, created_at DESC
+          FROM Damage_Reports
+          ORDER BY building_id, submitted_at DESC  -- CHANGED: created_at -> submitted_at
       ) dr ON b.building_id = dr.building_id
       WHERE b.risk_score IS NULL
       ORDER BY has_damage DESC, b.created_at DESC
