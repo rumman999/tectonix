@@ -143,7 +143,6 @@ export const getMyAssignments = async (req, res) => {
 
 export const updateAssignmentStatus = async (req, res) => {
   const { assignment_id, status } = req.body;
-  // valid statuses: 'Pending', 'Accepted', 'En Route', 'On Scene', 'Completed'
 
   try {
     await pool.query(
