@@ -62,9 +62,15 @@ export const AIScanner = () => {
   // --- HELPER: Fix Image URLs ---
   const getImageUrl = (path: string | undefined) => {
     if (!path) return "";
-    // Extracts just the filename 'image.jpg' from paths like 'server/uploads/image.jpg'
+    
+    // 1. Extract just the filename (e.g. '123.jpg') from any path string like 'server/uploads/123.jpg'
     const filename = path.split(/[/\\]/).pop();
-    return `${API_BASE_URL}/uploads/${filename}`;
+    
+    // 2. Use API_BASE_URL if set, otherwise default to localhost:5000
+    const baseUrl = API_BASE_URL || "http://localhost:5000";
+    
+    // Result: http://localhost:5000/uploads/123.jpg
+    return `${baseUrl}/uploads/${filename}`;
   };
 
   // --- 1. FETCH PENDING LIST ---
@@ -87,7 +93,6 @@ export const AIScanner = () => {
         const fetchSoil = async () => {
             setLoadingSoil(true);
             try {
-                // Assuming you have the updated sensorController that handles updates correctly
                 const res = await axios.get(`${API_BASE_URL}/api/sensors/building/${selectedBuilding.building_id}`);
                 setSoilData(res.data);
             } catch (err) {
@@ -476,7 +481,7 @@ export const AIScanner = () => {
         <DialogContent className="bg-black border-white/10 text-white max-w-3xl p-0 overflow-hidden">
             <div className="relative flex justify-center bg-black/80">
                 <img 
-                    src={getImageUrl(selectedBuilding?.damage_image)} // <--- Correct Usage
+                    src={getImageUrl(selectedBuilding?.damage_image)} 
                     alt="Damage Evidence" 
                     className="max-h-[80vh] w-auto object-contain"
                 />
