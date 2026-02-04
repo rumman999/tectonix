@@ -146,7 +146,6 @@ export const InteractiveMap = ({
 
         <ZoomControl position="bottomright" />
 
-        {/* 6. Map through the dynamic sensor state instead of hardcoded array */}
         {!loading &&
           sensors.map((sensor) => (
             <Marker
@@ -158,7 +157,6 @@ export const InteractiveMap = ({
 
               <Popup className="custom-white-popup">
                 <div className="p-1 min-w-[180px]">
-                  {/* High-visibility Status Bar at the top */}
                   <div
                     className={`h-1.5 w-full rounded-full mb-3 shadow-sm ${
                       sensor.status === "safe"
@@ -169,20 +167,17 @@ export const InteractiveMap = ({
                     }`}
                   />
 
-                  {/* Zone Name - Bold Dark Text */}
                   <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2 mb-1">
                     <MapPin className="h-4 w-4 text-primary fill-primary/10" />
                     {sensor.location}
                   </h3>
 
                   <div className="space-y-1.5 mb-3">
-                    {/* Sensor Name - Medium Contrast */}
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                       <Activity className="h-3 w-3" />
                       {sensor.sensor}
                     </div>
 
-                    {/* Intensity - Darker text with background hint */}
                     <div className="flex items-center gap-1.5 text-xs">
                       <ShieldAlert className="h-3 w-3 text-slate-500" />
                       <span className="text-slate-700 font-bold">
@@ -194,7 +189,6 @@ export const InteractiveMap = ({
                     </div>
                   </div>
 
-                  {/* Bottom Footer Section */}
                   <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                     <span className="text-[10px] font-mono text-slate-600">
                       ID: #{sensor.id}
@@ -217,7 +211,6 @@ export const InteractiveMap = ({
           ))}
       </MapContainer>
 
-      {/* Floating Title Card */}
       <div className="absolute top-4 left-4 z-[400] pointer-events-none">
         <div className="glass-card px-4 py-2.5 rounded-lg border border-white/10 shadow-2xl bg-black/40 backdrop-blur-md">
           <h3 className="text-sm font-bold text-white flex items-center gap-2.5">
@@ -233,7 +226,6 @@ export const InteractiveMap = ({
         </div>
       </div>
 
-      {/* FIX: Conditional Legend Rendering */}
       {showLegend && (
         <div className="absolute bottom-4 left-4 z-[400] pointer-events-auto">
           <div className="glass-card px-3 py-2 rounded-lg border border-white/10 shadow-xl bg-black/60 backdrop-blur-md flex gap-4">
