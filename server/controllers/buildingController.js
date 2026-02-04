@@ -261,3 +261,28 @@ export const getPendingAssessments = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+export const getBuildingMapData = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        building_id as id,        -- FIX: Maps 'building_id' to 'id'
+        building_name as name,    -- FIX: Maps 'building_name' to 'name'
+        address_text as location,      -- FIX: Maps 'address' to 'location'
+        risk_score, 
+        ST_X(location_gps::geometry) as lng, 
+        ST_Y(location_gps::geometry) as lat
+      FROM Buildings
+      WHERE location_gps IS NOT NULL
+      ORDER BY risk_score DESC; 
+    `;
+
+    const result = await pool.query(query);
+    
+    res.json(result.rows); 
+    
+  } catch (err) {
+    console.error("Map Data Error:", err.message);
+    res.status(500).json({ error: "Server Error" });
+  }
+};

@@ -7,6 +7,7 @@ import {
   Tooltip,
   ZoomControl,
   useMapEvents,
+  Circle, // <--- CHANGE 1: Added Circle to imports
 } from "react-leaflet";
 import { Activity, MapPin, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +24,13 @@ interface SensorData {
   magnitude: string;
 }
 
-// Custom pulsing icon logic
+// <--- CHANGE 2: Added Interface for Risk Zones
+interface RiskZone {
+  lat: number;
+  lng: number;
+  count: number;
+}
+
 const createPulsingIcon = (status: string) => {
   let colorClass = "bg-gray-500";
   let glowClass = "shadow-gray-500/50";
@@ -58,12 +65,10 @@ const MapClickHandler = () => {
   useMapEvents({
     click: async (e) => {
       const { lat, lng } = e.latlng;
-
-      // Show a loading toast
       const toastId = toast.loading("Identifying zone...");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/zones/identify`, {
+        const response = await fetch(`/api/zones/identify`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -77,13 +82,11 @@ const MapClickHandler = () => {
         const data = await response.json();
 
         if (response.ok) {
-          // Success: Update toast with Zone Name
           toast.success(`Location Identified: ${data.zone_name}`, {
             id: toastId,
             description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
           });
         } else {
-          // Error or No Zone Found
           toast.error(data.message || "No zone found here", {
             id: toastId,
           });
@@ -97,10 +100,9 @@ const MapClickHandler = () => {
   return null;
 };
 
-// FIX: Added interface for Props
 interface InteractiveMapProps {
   showLegend?: boolean;
-  className?: string; // Optional for custom sizing if needed
+  className?: string;
 }
 
 export const InteractiveMap = ({
@@ -109,11 +111,12 @@ export const InteractiveMap = ({
 }: InteractiveMapProps) => {
   const [sensors, setSensors] = useState<SensorData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [riskZones, setRiskZones] = useState<RiskZone[]>([]); // <--- CHANGE 3: Added State for Red Zones
 
   useEffect(() => {
     const fetchSensors = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/dashboard/logs`);
+        const res = await fetch(`/api/dashboard/logs`);
         const data = await res.json();
         if (res.ok) setSensors(data);
       } catch (err) {
@@ -123,9 +126,47 @@ export const InteractiveMap = ({
       }
     };
 
-    fetchSensors();
+    // <--- CHANGE 4: Added Logic to Fetch Buildings & Calculate Red Zones
+    const fetchRiskZones = async () => {
+      try {
+        const res = await fetch(`/api/buildings/map-data`);
+        if (res.ok) {
+          const buildings = await res.json();
+          
+          // Filter High Risk Buildings (Score > 75)
+          const highRisk = buildings.filter((b: any) => b.risk_score >= 75);
+          const zones: RiskZone[] = [];
+          const processed = new Set();
 
-    const interval = setInterval(fetchSensors, 10000);
+          // Cluster Logic: Find groups of 3+ dangerous buildings close together
+          highRisk.forEach((b1: any) => {
+            if (processed.has(b1.id)) return;
+            
+            const neighbors = highRisk.filter((b2: any) => 
+              !processed.has(b2.id) && 
+              Math.abs(b1.lat - b2.lat) < 0.005 && 
+              Math.abs(b1.lng - b2.lng) < 0.005
+            );
+
+            if (neighbors.length >= 1) {
+                zones.push({ lat: b1.lat, lng: b1.lng, count: neighbors.length });
+                neighbors.forEach((n: any) => processed.add(n.id));
+            }
+          });
+          setRiskZones(zones);
+        }
+      } catch (err) {
+        console.error("Risk zone calculation failed:", err);
+      }
+    };
+
+    fetchSensors();
+    fetchRiskZones(); // <--- Call the new function
+
+    const interval = setInterval(() => {
+        fetchSensors();
+        fetchRiskZones();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -145,6 +186,31 @@ export const InteractiveMap = ({
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
 
         <ZoomControl position="bottomright" />
+
+        {/* <--- CHANGE 5: Render the Red Zones (PUBG Style) */}
+        {riskZones.map((zone, i) => (
+          <Circle
+            key={i}
+            center={[zone.lat, zone.lng]}
+            radius={800} // Large radius like a danger zone
+            pathOptions={{
+              color: "#ef4444", // Red Border
+              fillColor: "#ef4444", // Red Fill
+              fillOpacity: 0.25, // Semi-transparent
+              weight: 1,
+            }}
+          >
+             {/* Optional: Add a popup if clicked */}
+             <Popup className="custom-dark-popup">
+                <div className="text-red-500 font-bold flex items-center gap-2">
+                   <ShieldAlert className="h-4 w-4" /> DANGER ZONE
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">
+                   High concentration of structurally unsafe buildings.
+                </div>
+             </Popup>
+          </Circle>
+        ))}
 
         {!loading &&
           sensors.map((sensor) => (
@@ -247,6 +313,15 @@ export const InteractiveMap = ({
                 Critical
               </span>
             </div>
+            {/* Added Legend Item for Zone */}
+            {riskZones.length > 0 && (
+                <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+                    <div className="w-3 h-3 rounded-full bg-red-500/50 border border-red-500" />
+                    <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider animate-pulse">
+                        Risk Zone
+                    </span>
+                </div>
+            )}
           </div>
         </div>
       )}

@@ -8,7 +8,8 @@ import {
   getBuildingList,
   updateRiskScore,
   getReportableBuildings,
-  getPendingAssessments
+  getPendingAssessments,
+  getBuildingMapData
 } from "../controllers/buildingController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -21,6 +22,7 @@ router.get("/reportable", verifyToken, getReportableBuildings);
 router.get("/owners", getAllOwners);
 router.get("/:id/ownership", getOwnershipHistory);
 router.post("/transfer", transferOwnership);
+router.get('/map-data', getBuildingMapData);
 router.patch("/:id/risk", updateRiskScore);
 router.get("/pending", verifyToken, getPendingAssessments);
 

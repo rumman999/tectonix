@@ -63,10 +63,10 @@ const SeismicMode = () => {
             client_uuid: clientId 
         };
         await api.post("/dashboard/seismic/report", payload);
-        setDebugLog(`🚀 Sent: ${mag.toFixed(2)}g`);
+        setDebugLog(`Sent: ${mag.toFixed(2)}g`);
         setShakeCount(prev => prev + 1);
     } catch (err: any) {
-        setDebugLog("❌ " + err.message);
+        setDebugLog("Error:" + err.message);
     }
   };
 
@@ -96,7 +96,6 @@ const SeismicMode = () => {
     setDebugLog("Active");
     if ('Accelerometer' in window) {
       try {
-        // @ts-ignore
         const sensor = new Accelerometer({ frequency: 60 });
         sensor.addEventListener('reading', () => {
             const mag = Math.sqrt(sensor.x**2 + sensor.y**2 + sensor.z**2) / 9.8;
@@ -126,7 +125,6 @@ const SeismicMode = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col md:flex-row">
       
-      {/* RED ALERT SCREEN */}
       <AnimatePresence>
         {systemStatus === "CRITICAL" && (
             <motion.div 
@@ -148,7 +146,6 @@ const SeismicMode = () => {
         )}
       </AnimatePresence>
 
-      {/* MOBILE HEADER */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur sticky top-0 z-50">
         <div className="flex items-center gap-2 font-bold text-lg">
             <Activity className="text-primary h-5 w-5" /> 
@@ -159,21 +156,17 @@ const SeismicMode = () => {
                 <Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button>
             </SheetTrigger>
             
-            {/* FIX 2: Width adjusted to w-64 to match Sidebar. [&>button]:hidden removes the X icon. */}
             <SheetContent side="left" className="w-64 p-0 border-r [&>button]:hidden">
-                {/* FIX 1: Accessibility Title (Hidden) */}
                 <SheetTitle className="hidden">Navigation Menu</SheetTitle>
                 <DashboardSidebar />
             </SheetContent>
         </Sheet>
       </div>
 
-      {/* DESKTOP SIDEBAR */}
       <div className="hidden md:block w-64 border-r bg-background/50 h-screen sticky top-0">
         <DashboardSidebar />
       </div>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 p-4 md:p-8 flex flex-col gap-6 w-full max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
