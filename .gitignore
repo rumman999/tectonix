@@ -60,7 +60,7 @@ supabase/.temp/
 .Python
 develop-eggs/
 eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
