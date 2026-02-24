@@ -129,8 +129,8 @@ export const getMyAssignments = async (req, res) => {
       LEFT JOIN Distress_Beacons b ON ra.beacon_id = b.beacon_id
       LEFT JOIN Users u_victim ON b.user_id = u_victim.user_id
       LEFT JOIN Disaster_Events e ON ra.event_id = e.event_id
-      WHERE ra.responder_user_id = $1 AND ra.status != 'Completed'
-      ORDER BY ra.assigned_at DESC
+      WHERE ra.responder_user_id = $1 -- REMOVED: AND ra.status != 'Completed'
+      ORDER BY ra.status ASC, ra.assigned_at DESC -- Sorts Active first, then by newest
     `;
 
     const result = await pool.query(query, [userId]);
@@ -145,10 +145,15 @@ export const updateAssignmentStatus = async (req, res) => {
   const { assignment_id, status } = req.body;
 
   try {
-    await pool.query(
-      `UPDATE Rescue_Assignments SET status = $1 WHERE assignment_id = $2 AND responder_user_id = $3`,
-      [status, assignment_id, req.user.id],
+    const result = await pool.query(
+      `UPDATE Rescue_Assignments SET status = $1 WHERE assignment_id = $2 AND responder_user_id = $3 RETURNING *`,
+      [status, assignment_id, req.user.user_id] 
     );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Mission not found or unauthorized" });
+    }
+
     res.json({ message: "Status updated successfully" });
   } catch (err) {
     console.error(err);
