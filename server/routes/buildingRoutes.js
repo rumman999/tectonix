@@ -24,7 +24,7 @@ router.get("/owners", getAllOwners);
 router.get("/:id/ownership", getOwnershipHistory);
 router.post("/transfer", transferOwnership);
 router.get('/map-data', getBuildingMapData);
-router.patch("/:id/risk", updateRiskScore);
+router.patch("/:id/risk", verifyToken, updateRiskScore);
 router.get("/pending", verifyToken, getPendingAssessments);
 router.get("/:id/reports", verifyToken, getBuildingReports);
 

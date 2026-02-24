@@ -52,7 +52,7 @@ const menuItems = [
     },
     { 
       icon: Building2, 
-      label: "My Buildings", 
+      label: "Asset Manager", // label: "My Buildings", 
       href: "/buildings",
       allowedRoles: ["Owner"] 
     },
@@ -64,7 +64,7 @@ const menuItems = [
     },
     { 
       icon: ScanLine, 
-      label: "AI Scanner", 
+      label: "AI Scanner", // label: "Safety Scan", 
       href: "/scanner",
       allowedRoles: ["Specialist"] 
     },

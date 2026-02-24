@@ -187,21 +187,47 @@ export const getReportableBuildings = async (req, res) => {
 };
 
 // 6. UPDATE RISK SCORE
+// 6. UPDATE RISK SCORE & LOG REPORT
 export const updateRiskScore = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.params; // This is the building_id
   const { risk_score } = req.body;
+  
+  // Get the specialist's user ID from the verified JWT token
+  const specialist_id = req.user.user_id;
+
+  const client = await pool.connect();
 
   try {
-    const query = `
+    // Start a transaction so both DB updates succeed or fail together
+    await client.query('BEGIN');
+
+    // 1. Update the current risk score in the Buildings table
+    const updateQuery = `
       UPDATE Buildings 
       SET risk_score = $1 
       WHERE building_id = $2
     `;
-    await pool.query(query, [risk_score, id]);
-    res.json({ message: "Risk score updated successfully" });
+    await client.query(updateQuery, [risk_score, id]);
+
+    // 2. Insert the historical log into the new scan_reports table
+    const insertQuery = `
+      INSERT INTO scan_reports (building_id, verified_by, assessment_score)
+      VALUES ($1, $2, $3)
+    `;
+    await client.query(insertQuery, [id, specialist_id, risk_score]);
+
+    // Commit the transaction
+    await client.query('COMMIT');
+    
+    res.json({ message: "Risk score updated and report logged successfully" });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update risk score" });
+    // If anything fails, rollback so we don't end up with partial data
+    await client.query('ROLLBACK');
+    console.error("Update Risk Score & Log Error:", err);
+    res.status(500).json({ error: "Failed to process the assessment." });
+  } finally {
+    client.release();
   }
 };
 
