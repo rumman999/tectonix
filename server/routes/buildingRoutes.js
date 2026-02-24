@@ -9,7 +9,8 @@ import {
   updateRiskScore,
   getReportableBuildings,
   getPendingAssessments,
-  getBuildingMapData
+  getBuildingMapData,
+  getBuildingReports,
 } from "../controllers/buildingController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -25,5 +26,6 @@ router.post("/transfer", transferOwnership);
 router.get('/map-data', getBuildingMapData);
 router.patch("/:id/risk", updateRiskScore);
 router.get("/pending", verifyToken, getPendingAssessments);
+router.get("/:id/reports", verifyToken, getBuildingReports);
 
 export default router;

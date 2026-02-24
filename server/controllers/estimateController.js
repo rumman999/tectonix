@@ -49,16 +49,27 @@ export const createEstimate = async (req, res) => {
     for (const item of line_items) {
       if (!item.material_id || isNaN(parseInt(item.material_id))) continue;
 
+
       await client.query(lineItemQuery, [
         estimateId,
-        parseInt(item.material_id), // Material IDs are Serial (Int) -> OK
+        parseInt(item.material_id),
         item.quantity,
         item.subtotal
       ]);
     }
 
+    const userRes = await client.query(
+      "SELECT full_name, email, phone_number FROM Users WHERE user_id = $1",
+      [user_id]
+    );
+    const userInfo = userRes.rows[0] || { full_name: "N/A", email: "", phone_number: "" };
+
     await client.query('COMMIT');
-    res.json({ message: "Estimate saved successfully", estimate_id: estimateId });
+    res.json({ 
+      message: "Estimate saved successfully", 
+      estimate_id: estimateId,
+      user: userInfo
+    });
 
   } catch (err) {
     await client.query('ROLLBACK');

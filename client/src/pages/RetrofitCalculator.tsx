@@ -18,6 +18,7 @@ import {
   Package,
   Loader2,
   CheckCircle,
+  Download,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type BuildingType = "commercial" | "residential" | null;
 
@@ -88,7 +91,7 @@ export const RetrofitCalculator = () => {
           axios.get(`${API_BASE_URL}/api/estimates/materials`, {
             headers: getHeaders(),
           }),
-          axios.get(`${API_BASE_URL}/api/buildings/list`, {
+          axios.get(`${API_BASE_URL}/api/buildings/reportable`, {
             headers: getHeaders(),
           }),
         ]);
@@ -200,37 +203,171 @@ export const RetrofitCalculator = () => {
 
 const handleSaveEstimate = async () => {
     if (!selectedBuildingId) {
-      toast({ title: "Building Required", description: "Please select a building in Step 1.", variant: "destructive" });
+      toast({
+        title: "Building Required",
+        description: "Please select a building in Step 1.",
+        variant: "destructive",
+      });
       setStep(1);
+      return;
+    }
+
+    const validItems = lineItems.filter(
+      (item) => item.material_id !== "" && item.quantity > 0
+    );
+
+    if (validItems.length === 0) {
+      toast({
+        title: "Empty Estimate",
+        description: "Please add at least one valid material with a quantity greater than 0.",
+        variant: "destructive",
+      });
       return;
     }
 
     setSaving(true);
     try {
       const payload = {
-        // FIX: Do NOT use parseInt(). Pass as string for UUID compatibility.
-        building_id: selectedBuildingId, 
+        building_id: selectedBuildingId,
         total_cost: totalCost,
-        // Optional context
-        building_type: buildingType, 
-        line_items: lineItems.map(item => ({
-          material_id: parseInt(item.material_id), // Materials are INT, so parseInt is correct here
+        building_type: buildingType,
+        line_items: validItems.map((item) => ({
+          material_id: parseInt(item.material_id),
           quantity: item.quantity,
           subtotal: item.subtotal,
         })),
       };
 
-      await axios.post(`${API_BASE_URL}/api/estimates`, payload, { headers: getHeaders() });
-      
-      toast({ 
-        title: "Estimate Saved!", 
-        description: "Your retrofit estimate has been saved to the database.",
-        className: "bg-green-600 text-white border-none"
+     const response = await axios.post(`${API_BASE_URL}/api/estimates`, payload, {
+        headers: getHeaders(),
       });
 
+      const realEstimateId = response.data.estimate_id;
+      const userInfo = response.data.user;
+      
+      
+      const formattedId = realEstimateId.split('-').pop().slice(6).toUpperCase();
+
+      
+      const doc = new jsPDF();
+      const building = buildings.find(
+        (b) => String(b.building_id) === selectedBuildingId
+      );
+      const date = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // -- Header Branding --
+      doc.setFontSize(22);
+      doc.setTextColor(37, 99, 235); // Primary Blue Color
+      doc.text("TECTONIX", 14, 20);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Advanced Seismic Retrofitting & Engineering", 14, 26);
+      
+      // -- Divider --
+      doc.setDrawColor(200);
+      doc.line(14, 30, 196, 30);
+
+      // -- Report Title --
+      doc.setFontSize(16);
+      doc.setTextColor(0);
+      doc.text("Retrofit Cost Estimate", 14, 42);
+
+      // -- Building/User Details Section --
+      doc.setFontSize(11);
+      doc.text("Prepared For:", 14, 52);
+      doc.setFont("helvetica", "bold");
+      // Use the actual user's name from the DB
+      doc.text(userInfo.full_name || "N/A", 14, 58); 
+      
+      doc.setFont("helvetica", "normal");
+      // Add Email and Phone
+      if (userInfo.email) doc.text(`Email: ${userInfo.email}`, 14, 64);
+      if (userInfo.phone_number) doc.text(`Phone: ${userInfo.phone_number}`, 14, 70);
+      
+      doc.text("Building Details:", 14, 80);
+      doc.text(`Name: ${building?.building_name || "N/A"}`, 14, 86);
+      doc.text(`Type: ${buildingType ? buildingType.charAt(0).toUpperCase() + buildingType.slice(1) : "N/A"}`, 14, 92);
+      doc.text(`Dimensions: ${sqFootage.toLocaleString()} sq ft | ${floors} Floors`, 14, 98);
+
+      doc.text("Date Generated:", 130, 52);
+      doc.text(date, 130, 58);
+      // Use the real, formatted DB Estimate ID
+      doc.text(`Estimate ID: #EST-${formattedId}`, 130, 64);
+      // -- Material Table --
+      const tableData = validItems.map((item) => {
+        const mat = materials.find(
+          (m) => String(m.material_id) === item.material_id
+        );
+        return [
+          mat?.item_name || "Unknown Material",
+          `${item.quantity}`,
+          `Tk ${mat?.unit_price.toFixed(2)}`,
+          `Tk ${item.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 105,
+        head: [["Material Item", "Quantity", "Unit Price", "Subtotal"]],
+        body: tableData,
+        foot: [["", "", "Total Estimated Cost", `Tk ${totalCost.toLocaleString()}`]],
+        theme: "grid",
+        headStyles: { 
+            fillColor: [37, 99, 235], 
+            textColor: 255, 
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            1: { halign: 'center' },
+            2: { halign: 'right' },
+            3: { halign: 'right', fontStyle: 'bold' }
+        },
+        footStyles: {
+            fillColor: [240, 240, 240],
+            textColor: 0,
+            fontStyle: 'bold',
+            halign: 'right'
+        }
+      });
+
+      // -- Footer --
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      doc.setFontSize(9);
+      doc.setTextColor(128);
+      doc.text(
+        "Disclaimer: This estimate is based on current market rates and standard material requirements.",
+        14,
+        finalY
+      );
+      doc.text(
+        "Structural integrity assessments should be verified by a certified engineer before construction.",
+        14,
+        finalY + 5
+      );
+      doc.text("Generated by Tectonix Platform", 14, finalY + 15);
+
+      // Save PDF
+      doc.save(`Tectonix_Estimate_${building?.building_name.replace(/\s+/g, '_')}_${date}.pdf`);
+
+      toast({
+        title: "Estimate Downloaded!",
+        description: "Your PDF report has been generated and data saved.",
+        className: "bg-green-600 text-white border-none",
+      });
     } catch (err) {
-      console.error("Save failed", err);
-      toast({ title: "Save Failed", description: "Could not save the estimate.", variant: "destructive" });
+      console.error("Save/Download failed", err);
+      toast({
+        title: "Action Failed",
+        description: "Could not save the estimate or generate PDF.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -743,27 +880,26 @@ const handleSaveEstimate = async () => {
                       ৳{displayedCost.toLocaleString()}
                     </motion.div>
                     <p className="text-sm text-muted-foreground mt-4">
-                      *Based on current market rates. Actual costs may vary.
                     </p>
                   </div>
                 </motion.div>
 
-                {/* Save Estimate Button */}
-                <div className="flex justify-center pt-4">
-                  <GlowButton
-                    onClick={handleSaveEstimate}
-                    size="lg"
-                    className="w-full sm:w-auto"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <Loader2 className="animate-spin h-5 w-5" />
-                    ) : (
-                      <Save className="h-5 w-5" />
-                    )}
-                    Save Estimate
-                  </GlowButton>
-                </div>
+                {/* Download Estimate Button */}
+<div className="flex justify-center pt-4">
+  <GlowButton
+    onClick={handleSaveEstimate}
+    size="lg"
+    className="w-full sm:w-auto gap-2"
+    disabled={saving}
+  >
+    {saving ? (
+      <Loader2 className="animate-spin h-5 w-5" />
+    ) : (
+      <Save className="h-5 w-5" />
+    )}
+    Download Estimate
+  </GlowButton>
+</div>
               </motion.div>
             )}
           </AnimatePresence>

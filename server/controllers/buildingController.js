@@ -138,6 +138,24 @@ export const getBuildingList = async (req, res) => {
   }
 };
 
+// GET DAMAGE REPORTS FOR A BUILDING
+export const getBuildingReports = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      SELECT report_id, description, severity_level, location_text, image_proof_url, submitted_at
+      FROM Damage_Reports
+      WHERE building_id = $1
+      ORDER BY submitted_at DESC
+    `;
+    const result = await pool.query(query, [id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch Building Reports Error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
 // 5. GET REPORTABLE BUILDINGS (For Damage Reports)
 export const getReportableBuildings = async (req, res) => {
   try {
