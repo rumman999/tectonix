@@ -20,6 +20,7 @@ import {
   Shield,
   Menu,
   ArrowLeft,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -53,6 +54,15 @@ interface Building {
   address_text: string;
   construction_year: number;
   risk_score: number | null;
+}
+
+interface DamageReport {
+  report_id: number;
+  description: string;
+  severity_level: number;
+  location_text: string;
+  image_proof_url: string | null;
+  submitted_at: string;
 }
 
 interface BuildingOwnership {
@@ -123,6 +133,7 @@ export const BuildingManager = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
     null,
   );
+  
   const [ownershipHistory, setOwnershipHistory] = useState<BuildingOwnership[]>(
     [],
   );
@@ -134,6 +145,24 @@ export const BuildingManager = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+
+  const [damageReports, setDamageReports] = useState<DamageReport[]>([]);
+  useEffect(() => {
+    if (selectedBuilding && activeTab === "details") {
+      const fetchReports = async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/buildings/${selectedBuilding.building_id}/reports`,
+            { headers: getHeaders() }
+          );
+          setDamageReports(res.data);
+        } catch (err) {
+          console.error("Failed to fetch reports", err);
+        }
+      };
+      fetchReports();
+    }
+  }, [selectedBuilding, activeTab]);
 
   const [newBuilding, setNewBuilding] = useState({
     building_name: "",
@@ -549,6 +578,52 @@ export const BuildingManager = () => {
                                 ? `${selectedBuilding.risk_score}%`
                                 : "N/A"}
                             </span>
+                          </div>
+                        </div>
+
+                        {/* --- DAMAGE REPORTS SECTION --- */}
+                        <div className="sm:col-span-2 mt-6 pt-6 border-t border-white/10">
+                          <h4 className="font-medium text-foreground mb-4 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-warning" />
+                            Damage Reports
+                          </h4>
+                          
+                          <div className="space-y-3">
+                            {damageReports.length > 0 ? (
+                              damageReports.map((report) => (
+                                <div key={report.report_id} className="p-4 bg-muted/20 rounded-xl border border-white/5 flex flex-col sm:flex-row gap-4">
+                                  {report.image_proof_url && (
+                                    <img 
+                                      src={report.image_proof_url} 
+                                      alt="Damage proof" 
+                                      className="w-full sm:w-24 h-24 object-cover rounded-lg border border-white/10"
+                                    />
+                                  )}
+                                  <div className="flex-1">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                                      <p className="font-medium text-sm text-foreground">{report.description}</p>
+                                      <StatusBadge 
+                                        status={report.severity_level > 66 ? "danger" : report.severity_level > 33 ? "warning" : "safe"}
+                                      >
+                                        Severity: {report.severity_level}
+                                      </StatusBadge>
+                                    </div>
+                                    <div className="flex flex-col gap-1 mt-2">
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                        <MapPin className="h-3 w-3" /> {report.location_text}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                        <Clock className="h-3 w-3" /> {new Date(report.submitted_at).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-6 bg-muted/10 rounded-xl border border-white/5">
+                                <p className="text-sm text-muted-foreground">No damage reports filed for this building.</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </motion.div>

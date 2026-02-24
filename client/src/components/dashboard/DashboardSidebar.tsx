@@ -52,7 +52,7 @@ const menuItems = [
     },
     { 
       icon: Building2, 
-      label: "Asset Manager", 
+      label: "My Buildings", 
       href: "/buildings",
       allowedRoles: ["Owner"] 
     },
