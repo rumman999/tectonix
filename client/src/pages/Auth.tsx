@@ -329,13 +329,14 @@ export const Auth = () => {
             <div className="relative">
               <input
                 type="email"
+                id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="peer w-full bg-muted/30 border border-white/10 rounded-xl px-12 py-4 text-foreground placeholder-transparent focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="Email"
                 required
               />
-              <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-primary peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+              <label htmlFor="email" className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-primary peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
                 Email Address
               </label>
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -344,6 +345,7 @@ export const Auth = () => {
             {/* Password Field */}
             <div className="relative">
               <input
+                id="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -351,7 +353,7 @@ export const Auth = () => {
                 placeholder="Password"
                 required
               />
-              <label className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-primary peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
+              <label htmlFor="password" className="absolute left-12 top-4 text-muted-foreground text-sm transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-1 peer-focus:text-xs peer-focus:text-primary peer-[:not(:placeholder-shown)]:top-1 peer-[:not(:placeholder-shown)]:text-xs">
                 Password
               </label>
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

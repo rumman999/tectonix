@@ -91,27 +91,32 @@ io.on("connection", (socket) => {
 
   // 2. Handle incoming messages
   socket.on("send_message", async (data) => {
+    
     const { taskId, taskType, senderId, senderName, text } = data;
 
     try {
+      // CRITICAL: Prevent Postgres from crashing if the ID is missing, empty, or not a UUID
+      const validSenderId = (senderId && senderId.length > 10) ? senderId : null;
+
       // Save to database
       const result = await pool.query(
         `INSERT INTO Mission_Messages (task_type, task_id, sender_id, message) 
          VALUES ($1, $2, $3, $4) 
          RETURNING message_id, task_type, task_id, sender_id, message, is_system_message, created_at`,
-        [taskType, taskId, senderId, text]
+        [taskType, taskId, validSenderId, text]
       );
 
       const savedMessage = {
         ...result.rows[0],
-        sender_name: senderName // Attach the name for the frontend
+        sender_name: senderName || "A Responder" // Fallback name
       };
 
-      // Broadcast to everyone in that specific room (including the sender so their UI updates)
+      // Broadcast to everyone in that specific room
       io.to(taskId).emit("receive_message", savedMessage);
       
+
     } catch (err) {
-      console.error("Failed to save chat message:", err);
+      console.error("❌ DATABASE INSERT ERROR:", err.message);
     }
   });
 
