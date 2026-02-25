@@ -18,7 +18,7 @@ interface Message {
 interface MissionChatProps {
   taskId: string;
   taskType: "Beacon" | "Event";
-  currentUser: { user_id: string; full_name: string };
+  currentUser: { user_id?: string; id?: string; full_name?: string; name?: string };
   onClose: () => void;
 }
 
@@ -30,15 +30,21 @@ export const MissionChat = ({ taskId, taskType, currentUser, onClose }: MissionC
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Safely extract user ID and Name regardless of how they are saved in localStorage
+  const safeUserId = currentUser.user_id || currentUser.id || "";
+  const safeUserName = currentUser.full_name || currentUser.name || "Responder";
+
   // 1. Fetch History & Connect Socket
   useEffect(() => {
+    if (!taskId) return;
+
     // Fetch past messages
     axios.get(`${API_BASE_URL}/api/rescue/chat/${taskId}`, { headers: getHeaders() })
       .then(res => setMessages(res.data))
       .catch(err => console.error("Failed to load chat history", err));
 
     // Connect to Socket
-    const newSocket = io(API_BASE_URL.replace("/api", "")); // Connects to base server URL
+    const newSocket = io(API_BASE_URL.replace("/api", ""));
     setSocket(newSocket);
 
     newSocket.emit("join_mission", taskId);
@@ -59,18 +65,14 @@ export const MissionChat = ({ taskId, taskType, currentUser, onClose }: MissionC
     }
   }, [messages]);
 
-// 3. Send Message
+  // 3. Send Message
   const handleSend = (e?: FormEvent) => {
     e?.preventDefault();
     const text = draft.trim();
     if (!text || !socket) return;
 
-    // Smart fallback to catch differently named keys from local storage!
-    const safeUserId = currentUser.user_id || (currentUser as any).id;
-    const safeUserName = currentUser.full_name || (currentUser as any).name || "Responder";
-
     if (!safeUserId) {
-        console.error("No valid user ID found in local storage!");
+        console.error("No valid user ID found!");
         return;
     }
 
@@ -86,10 +88,8 @@ export const MissionChat = ({ taskId, taskType, currentUser, onClose }: MissionC
     inputRef.current?.focus();
   };
 
-  // Update isOwn to use the safe check too:
-  const isOwn = (msg: Message) => msg.sender_id === (currentUser.user_id || (currentUser as any).id);
-
-  const isOwn = (msg: Message) => msg.sender_id === currentUser.user_id;
+  // ONLY ONE isOwn DECLARATION HERE
+  const isOwn = (msg: Message) => msg.sender_id === safeUserId;
 
   const formatTime = (iso: string) => {
     return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -108,7 +108,7 @@ export const MissionChat = ({ taskId, taskType, currentUser, onClose }: MissionC
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{taskType} Comms</p>
-            <p className="text-[11px] text-muted-foreground truncate">ID: {taskId.split("-")[0]}</p>
+            <p className="text-[11px] text-muted-foreground truncate">ID: {taskId ? taskId.split("-")[0] : 'Unknown'}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
@@ -152,7 +152,7 @@ export const MissionChat = ({ taskId, taskType, currentUser, onClose }: MissionC
               className="w-full h-10 pl-10 pr-3 rounded-xl bg-muted/30 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
             />
           </div>
-          <button type="submit" disabled={!draft.trim()} className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 hover:bg-primary/80 transition-colors shrink-0">
+          <button type="submit" disabled={!draft.trim() || !taskId} className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary text-primary-foreground disabled:opacity-30 hover:bg-primary/80 transition-colors shrink-0">
             <Send className="h-4 w-4" />
           </button>
         </form>

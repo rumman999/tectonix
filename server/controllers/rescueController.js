@@ -113,30 +113,29 @@ export const getMyAssignments = async (req, res) => {
         ra.task_type,
         ra.status as assignment_status,
         ra.assigned_at,
-        -- Beacon Details (if task_type = 'Beacon')
-        b.beacon_id,
+        ra.beacon_id,
+        ra.event_id,
         ST_Y(b.active_gps::geometry) as beacon_lat, 
         ST_X(b.active_gps::geometry) as beacon_lng,
         u_victim.full_name as victim_name,
         u_victim.phone_number as victim_phone,
-        -- Event Details (if task_type = 'Event')
-        e.event_id,
         e.event_type,
         e.magnitude,
         ST_Y(e.epicenter_gps::geometry) as event_lat, 
         ST_X(e.epicenter_gps::geometry) as event_lng
       FROM Rescue_Assignments ra
+      -- FIXED: Changed 'Beacons' to 'Distress_Beacons'
       LEFT JOIN Distress_Beacons b ON ra.beacon_id = b.beacon_id
       LEFT JOIN Users u_victim ON b.user_id = u_victim.user_id
       LEFT JOIN Disaster_Events e ON ra.event_id = e.event_id
-      WHERE ra.responder_user_id = $1 -- REMOVED: AND ra.status != 'Completed'
-      ORDER BY ra.status ASC, ra.assigned_at DESC -- Sorts Active first, then by newest
+      WHERE ra.responder_user_id = $1
+      ORDER BY ra.status ASC, ra.assigned_at DESC
     `;
 
     const result = await pool.query(query, [userId]);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching assignments:", err);
     res.status(500).json({ error: "Failed to fetch assignments" });
   }
 };
@@ -158,8 +157,12 @@ export const updateAssignmentStatus = async (req, res) => {
     const assignment = result.rows[0];
     const taskId = assignment.task_type === 'Beacon' ? assignment.beacon_id : assignment.event_id;
 
-    // 2. Generate the automated system message
-    const systemText = `${req.user.full_name} marked their status as: ${status}`;
+    // --- NEW FIX: Fetch the actual user's name directly from the DB ---
+    const userRes = await pool.query(`SELECT full_name FROM Users WHERE user_id = $1`, [req.user.user_id]);
+    const userName = userRes.rows[0]?.full_name || "A Responder";
+
+    // 2. Generate the automated system message WITH the real name
+    const systemText = `${userName} marked their status as: ${status.replace("_", " ")}`;
     
     const msgResult = await pool.query(
       `INSERT INTO Mission_Messages (task_type, task_id, sender_id, message, is_system_message) 
@@ -173,7 +176,7 @@ export const updateAssignmentStatus = async (req, res) => {
         sender_name: "System"
     };
 
-    // 3. Emit the system message to the live chat room!
+    // 3. Emit the system message
     const io = req.app.get('io');
     if (io) {
         io.to(taskId).emit("receive_message", savedSystemMsg);
@@ -181,7 +184,7 @@ export const updateAssignmentStatus = async (req, res) => {
 
     res.json({ message: "Status updated successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Status Update Error:", err);
     res.status(500).json({ error: "Failed to update status" });
   }
 };

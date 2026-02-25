@@ -23,6 +23,8 @@ interface Assignment {
   task_type: 'Beacon' | 'Event';
   assignment_status: string;
   assigned_at: string;
+  beacon_id?: string;
+  event_id?: string;
   beacon_lat?: number;
   beacon_lng?: number;
   victim_name?: string;
