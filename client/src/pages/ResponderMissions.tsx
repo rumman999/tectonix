@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { NavigationMap } from "@/components/dashboard/NavigationMap";
 
 interface Assignment {
   assignment_id: string | number;
@@ -135,15 +136,15 @@ export const ResponderMissions = () => {
     }
   };
 
-  const openNavigation = (lat?: number, lng?: number) => {
-    if (lat && lng) {
-      // Opens Google Maps Directions mode
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank");
-    } else {
-        toast({ title: "Location Error", description: "Coordinates missing for this mission.", variant: "destructive" });
-    }
-  };
+const [navMission, setNavMission] = useState<{lat: number, lng: number} | null>(null);
 
+const openNavigation = (lat?: number, lng?: number) => {
+  if (lat && lng) {
+    setNavMission({ lat, lng });
+  } else {
+    toast({ title: "Location Error", description: "Coordinates missing.", variant: "destructive" });
+  }
+};
   const activeMissions = missions.filter((m) => normalizeStatus(m.assignment_status) !== "Completed");
   const completedMissions = missions.filter((m) => normalizeStatus(m.assignment_status) === "Completed");
 
@@ -158,13 +159,7 @@ export const ResponderMissions = () => {
     const colorClass = isBeacon ? "text-destructive" : "text-warning";
 
     return (
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="h-full" 
-      >
+
         <GlassCard 
             className="p-4 lg:p-5 h-full flex flex-col" 
             hover={true} 
@@ -274,7 +269,7 @@ export const ResponderMissions = () => {
             )}
           </div>
         </GlassCard>
-      </motion.div>
+   
     );
   };
 
@@ -325,7 +320,16 @@ export const ResponderMissions = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               <AnimatePresence mode="popLayout">
                 {activeMissions.map((m) => (
-                  <MissionCard key={m.assignment_id} mission={m} />
+                  <motion.div
+                    key={m.assignment_id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="h-full"
+                  >
+                    <MissionCard mission={m} />
+                  </motion.div>
                 ))}
               </AnimatePresence>
             </div>
@@ -341,7 +345,16 @@ export const ResponderMissions = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 opacity-70">
               <AnimatePresence mode="popLayout">
                 {completedMissions.map((m) => (
-                  <MissionCard key={m.assignment_id} mission={m} compact />
+                  <motion.div
+                    key={m.assignment_id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="h-full"
+                  >
+                    <MissionCard mission={m} compact />
+                  </motion.div>
                 ))}
               </AnimatePresence>
             </div>
@@ -356,6 +369,14 @@ export const ResponderMissions = () => {
           </div>
         )}
       </main>
+
+      {navMission && (
+        <NavigationMap 
+            destLat={navMission.lat} 
+            destLng={navMission.lng} 
+            onClose={() => setNavMission(null)} 
+        />
+      )}
     </div>
   );
 };

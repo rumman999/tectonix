@@ -7,13 +7,27 @@ import {
   Tooltip,
   ZoomControl,
   useMapEvents,
-  Circle, // <--- CHANGE 1: Added Circle to imports
+  Circle,
 } from "react-leaflet";
 import { Activity, MapPin, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { API_BASE_URL, getHeaders } from "@/config";
+
+
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // Earth's radius
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; 
+};
 
 interface SensorData {
   id: number;
@@ -29,6 +43,7 @@ interface RiskZone {
   lat: number;
   lng: number;
   count: number;
+  radius: number;
 }
 
 const createPulsingIcon = (status: string) => {
@@ -126,33 +141,53 @@ export const InteractiveMap = ({
       }
     };
 
-    // <--- CHANGE 4: Added Logic to Fetch Buildings & Calculate Red Zones
+    
     const fetchRiskZones = async () => {
       try {
         const res = await fetch(`/api/buildings/map-data`);
         if (res.ok) {
           const buildings = await res.json();
-          
-          // Filter High Risk Buildings (Score > 75)
           const highRisk = buildings.filter((b: any) => b.risk_score >= 75);
-          const zones: RiskZone[] = [];
-          const processed = new Set();
 
-          // Cluster Logic: Find groups of 3+ dangerous buildings close together
-          highRisk.forEach((b1: any) => {
-            if (processed.has(b1.id)) return;
-            
-            const neighbors = highRisk.filter((b2: any) => 
-              !processed.has(b2.id) && 
-              Math.abs(b1.lat - b2.lat) < 0.005 && 
-              Math.abs(b1.lng - b2.lng) < 0.005
-            );
+          // 1. Initial State: Every building starts as a 400m risk circle
+          let zones: RiskZone[] = highRisk.map((b: any) => ({
+            lat: b.lat,
+            lng: b.lng,
+            count: 1,
+            radius: 400,
+          }));
 
-            if (neighbors.length >= 1) {
-                zones.push({ lat: b1.lat, lng: b1.lng, count: neighbors.length });
-                neighbors.forEach((n: any) => processed.add(n.id));
+          // 2. Iteratively merge circles that touch or overlap
+          let merged = true;
+          while (merged) {
+            merged = false;
+            for (let i = 0; i < zones.length; i++) {
+              for (let j = i + 1; j < zones.length; j++) {
+                const distance = getDistance(
+                  zones[i].lat, zones[i].lng,
+                  zones[j].lat, zones[j].lng
+                );
+
+                // If the distance between centers is less than the sum of their radii, they collide!
+                if (distance < zones[i].radius + zones[j].radius) {
+                  const totalCount = zones[i].count + zones[j].count;
+                  
+                  // Calculate weighted geographical center
+                  const newLat = (zones[i].lat * zones[i].count + zones[j].lat * zones[j].count) / totalCount;
+                  const newLng = (zones[i].lng * zones[i].count + zones[j].lng * zones[j].count) / totalCount;
+
+                  // Expand the radius to cover both original circles smoothly
+                  const newRadius = Math.max(zones[i].radius, zones[j].radius) + (distance / 2);
+
+                  zones[i] = { lat: newLat, lng: newLng, count: totalCount, radius: newRadius };
+                  zones.splice(j, 1); // Remove the absorbed circle
+                  merged = true;
+                  break; // Restart loop to check for new collisions
+                }
+              }
+              if (merged) break;
             }
-          });
+          }
           setRiskZones(zones);
         }
       } catch (err) {
@@ -183,7 +218,13 @@ export const InteractiveMap = ({
         className="w-full h-full z-0"
         style={{ background: "#020617" }}
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+        <TileLayer 
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains={['a', 'b', 'c', 'd']} // Splits downloads across 4 different Carto servers
+          keepBuffer={4}                    // Keeps surrounding tiles loaded in memory so they don't reload
+          updateWhenIdle={true}             // Pauses downloading while the user is dragging the map
+          updateWhenZooming={false}         // Pauses downloading during zoom animations
+        />
 
         <ZoomControl position="bottomright" />
 
@@ -192,7 +233,7 @@ export const InteractiveMap = ({
           <Circle
             key={i}
             center={[zone.lat, zone.lng]}
-            radius={800} // Large radius like a danger zone
+            radius={zone.radius} // Large radius like a danger zone
             pathOptions={{
               color: "#ef4444", // Red Border
               fillColor: "#ef4444", // Red Fill

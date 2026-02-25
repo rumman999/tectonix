@@ -259,13 +259,21 @@ export const RescueCoordinator = () => {
             <div className="hidden lg:flex items-center gap-1 p-1 bg-muted/30 rounded-lg">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <Grid3X3 className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-md transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === "list"
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <List className="h-4 w-4" />
               </button>
@@ -467,7 +475,13 @@ export const RescueCoordinator = () => {
                       {p.rank || p.proficiency_level || "General"}
                     </div>
                     <div className="flex gap-2 ml-4">
-                      <button className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-primary/10 text-primary text-[10px] font-medium rounded-md hover:bg-primary/20">
+                      <button
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-primary/10 text-primary text-[10px] font-medium rounded-md hover:bg-primary/20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `tel:${p.phone_number}`;
+                        }}
+                      >
                         <Phone className="h-3 w-3" /> Contact
                       </button>
                     </div>
