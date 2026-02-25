@@ -16,6 +16,9 @@ import { updateMaterialRates } from './jobs/priceUpdater.js';
 import { getBuildingSoilData } from "./controllers/sensorController.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import pool from "./config/db.js";
 
 dotenv.config();
 
@@ -62,6 +65,62 @@ app.get("/", (req, res) => {
   res.send("Tectonix API is running");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Wrap Express with HTTP server
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Or your specific frontend URL
+    methods: ["GET", "POST"]
+  }
+});
+
+// Make 'io' available to our Express controllers (crucial for system messages later!)
+app.set('io', io);
+
+// --- SOCKET.IO LOGIC ---
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // 1. Join a specific mission room
+  socket.on("join_mission", (taskId) => {
+    socket.join(taskId);
+    console.log(`User joined room: ${taskId}`);
+  });
+
+  // 2. Handle incoming messages
+  socket.on("send_message", async (data) => {
+    const { taskId, taskType, senderId, senderName, text } = data;
+
+    try {
+      // Save to database
+      const result = await pool.query(
+        `INSERT INTO Mission_Messages (task_type, task_id, sender_id, message) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING message_id, task_type, task_id, sender_id, message, is_system_message, created_at`,
+        [taskType, taskId, senderId, text]
+      );
+
+      const savedMessage = {
+        ...result.rows[0],
+        sender_name: senderName // Attach the name for the frontend
+      };
+
+      // Broadcast to everyone in that specific room (including the sender so their UI updates)
+      io.to(taskId).emit("receive_message", savedMessage);
+      
+    } catch (err) {
+      console.error("Failed to save chat message:", err);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

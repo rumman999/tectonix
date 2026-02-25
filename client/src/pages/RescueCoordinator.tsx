@@ -18,6 +18,7 @@ import {
   Grid3X3,
   List,
   Flame,
+  MessageCircle,
   Map as MapIcon,
 } from "lucide-react";
 import {
@@ -45,6 +46,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { MissionChat } from "@/components/mission/MissionChat";
 
 // --- TYPES (From your actual DB Schema) ---
 interface Beacon {
@@ -111,6 +113,11 @@ export const RescueCoordinator = () => {
   const [events, setEvents] = useState<DisasterEvent[]>([]);
   const [personnel, setPersonnel] = useState<Responder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chatMission, setChatMission] = useState<{
+    id: string;
+    type: "Beacon" | "Event";
+  } | null>(null);
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
   // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -348,7 +355,9 @@ export const RescueCoordinator = () => {
                           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                             <Phone className="w-3 h-3" /> {b.phone_number}
                           </p>
-                          <div className="mt-3">
+
+                          {/* Both buttons go inside this single mt-3 div */}
+                          <div className="mt-3 space-y-2">
                             <button
                               onClick={() => {
                                 setDeployForm({
@@ -361,6 +370,22 @@ export const RescueCoordinator = () => {
                               className="w-full py-1.5 bg-red-500/20 text-red-400 text-xs font-medium rounded hover:bg-red-500/30 transition-colors"
                             >
                               Assign Rescue
+                            </button>
+
+                            {/* NEW CHAT BUTTON */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setChatMission({
+                                  id: b.beacon_id,
+                                  type: "Beacon",
+                                });
+                              }}
+                              className="w-full py-1.5 bg-muted/30 text-foreground text-xs font-medium rounded hover:bg-muted/50 transition-colors flex justify-center gap-1 items-center"
+                            >
+                              <MessageCircle className="w-3 h-3" /> Mission Chat
                             </button>
                           </div>
                         </div>
@@ -396,7 +421,10 @@ export const RescueCoordinator = () => {
                           </p>
                           <div className="mt-3">
                             <button
+                              type="button"
                               onClick={() => {
+                                e.preventDefault(); 
+                                e.stopPropagation();
                                 setDeployForm({
                                   type: "Event",
                                   id: e.event_id,
@@ -407,6 +435,18 @@ export const RescueCoordinator = () => {
                               className="w-full py-1.5 bg-orange-500/20 text-orange-400 text-xs font-medium rounded hover:bg-orange-500/30 transition-colors"
                             >
                               Dispatch Team
+                            </button>
+                            {/* NEW CHAT BUTTON */}
+                            <button
+                              onClick={() =>
+                                setChatMission({
+                                  id: e.event_id,
+                                  type: "Event",
+                                })
+                              }
+                              className="w-full py-1.5 bg-muted/30 text-foreground text-xs font-medium rounded hover:bg-muted/50 transition-colors flex justify-center gap-1 items-center"
+                            >
+                              <MessageCircle className="w-3 h-3" /> Mission Chat
                             </button>
                           </div>
                         </div>
@@ -888,6 +928,16 @@ export const RescueCoordinator = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <AnimatePresence>
+        {chatMission && (
+          <MissionChat
+            taskId={chatMission.id}
+            taskType={chatMission.type}
+            currentUser={currentUser}
+            onClose={() => setChatMission(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

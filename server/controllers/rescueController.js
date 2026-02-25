@@ -145,6 +145,7 @@ export const updateAssignmentStatus = async (req, res) => {
   const { assignment_id, status } = req.body;
 
   try {
+    // 1. Update the status
     const result = await pool.query(
       `UPDATE Rescue_Assignments SET status = $1 WHERE assignment_id = $2 AND responder_user_id = $3 RETURNING *`,
       [status, assignment_id, req.user.user_id] 
@@ -152,6 +153,30 @@ export const updateAssignmentStatus = async (req, res) => {
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Mission not found or unauthorized" });
+    }
+
+    const assignment = result.rows[0];
+    const taskId = assignment.task_type === 'Beacon' ? assignment.beacon_id : assignment.event_id;
+
+    // 2. Generate the automated system message
+    const systemText = `${req.user.full_name} marked their status as: ${status}`;
+    
+    const msgResult = await pool.query(
+      `INSERT INTO Mission_Messages (task_type, task_id, sender_id, message, is_system_message) 
+       VALUES ($1, $2, $3, $4, TRUE) 
+       RETURNING message_id, task_type, task_id, sender_id, message, is_system_message, created_at`,
+      [assignment.task_type, taskId, req.user.user_id, systemText]
+    );
+
+    const savedSystemMsg = {
+        ...msgResult.rows[0],
+        sender_name: "System"
+    };
+
+    // 3. Emit the system message to the live chat room!
+    const io = req.app.get('io');
+    if (io) {
+        io.to(taskId).emit("receive_message", savedSystemMsg);
     }
 
     res.json({ message: "Status updated successfully" });
@@ -200,5 +225,33 @@ export const resolveAlert = async (req, res) => {
     res.status(500).json({ error: "Failed to resolve alert" });
   } finally {
     client.release();
+  }
+};
+
+export const getMissionChat = async (req, res) => {
+  const { taskId } = req.params;
+
+  try {
+    const query = `
+      SELECT 
+        m.message_id, 
+        m.task_type, 
+        m.task_id, 
+        m.sender_id, 
+        m.message, 
+        m.is_system_message, 
+        m.created_at,
+        u.full_name as sender_name
+      FROM Mission_Messages m
+      LEFT JOIN Users u ON m.sender_id = u.user_id
+      WHERE m.task_id = $1
+      ORDER BY m.created_at ASC
+    `;
+    const result = await pool.query(query, [taskId]);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Failed to fetch chat history:", err);
+    res.status(500).json({ error: "Failed to fetch chat history" });
   }
 };

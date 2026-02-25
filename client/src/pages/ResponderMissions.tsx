@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
 import {
   Menu, MapPin, Clock, Phone, Navigation,
   AlertTriangle, User, Shield, Flame,
-  ChevronRight, Radio, ShieldCheck, CheckCircle
+  ChevronRight, Radio, ShieldCheck, CheckCircle,
+  MessageCircle, 
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavigationMap } from "@/components/dashboard/NavigationMap";
+import { MissionChat } from "@/components/mission/MissionChat";
 
 interface Assignment {
   assignment_id: string | number;
@@ -92,6 +94,8 @@ export const ResponderMissions = () => {
   const { toast } = useToast();
   const [missions, setMissions] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chatMission, setChatMission] = useState<{id: string, type: 'Beacon' | 'Event'} | null>(null);
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
   const fetchMissions = async () => {
     try {
@@ -241,12 +245,27 @@ const openNavigation = (lat?: number, lng?: number) => {
           {/* Actions - Pushed to bottom with mt-auto */}
           <div className="flex items-center gap-2 mt-auto pt-2">
             {!compact && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); openNavigation(lat, lng); }}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary/10 text-primary text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  <Navigation className="h-3.5 w-3.5" /> Navigate
-                </button>
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openNavigation(lat, lng); }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-primary/10 text-primary text-xs font-medium rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <Navigation className="h-3.5 w-3.5" /> Navigate
+                  </button>
+                  
+                  {/* --- NEW CHAT BUTTON --- */}
+                  <button
+                    type="button"
+                    onClick={(e) => { 
+                      e.preventDefault();
+                      e.stopPropagation(); 
+                      setChatMission({ id: isBeacon ? mission.beacon_id! : mission.event_id!, type: isBeacon ? 'Beacon' : 'Event' }); 
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-muted/30 text-foreground text-xs font-medium rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> Chat
+                  </button>
+                </>
             )}
 
             {nextLabel && (
@@ -377,6 +396,18 @@ const openNavigation = (lat?: number, lng?: number) => {
             onClose={() => setNavMission(null)} 
         />
       )}
+
+      <AnimatePresence>
+        {chatMission && (
+          <MissionChat 
+            taskId={chatMission.id} 
+            taskType={chatMission.type} 
+            currentUser={currentUser} 
+            onClose={() => setChatMission(null)} 
+          />
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

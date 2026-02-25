@@ -6,6 +6,7 @@ import {
   getMyAssignments,
   updateAssignmentStatus,
   resolveAlert,
+  getMissionChat,
 } from "../controllers/rescueController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 
@@ -17,5 +18,6 @@ router.post("/assign", verifyToken, assignPersonnel);
 router.get("/my-missions", verifyToken, getMyAssignments);
 router.put("/mission-status", verifyToken, updateAssignmentStatus);
 router.post("/resolve", verifyToken, resolveAlert);
+router.get("/chat/:taskId", verifyToken, getMissionChat);
 
 export default router;
