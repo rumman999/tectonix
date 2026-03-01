@@ -81,19 +81,37 @@ export const HeroSection = () => {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
+      
             <GlowButton
               variant="primary"
               size="lg"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                const token = localStorage.getItem("token");
+                if (token) {
+                  navigate("/dashboard");
+                } else {
+                  navigate("/auth");
+                }
+              }}
             >
               Launch Dashboard
               <ArrowRight className="h-5 w-5" />
             </GlowButton>
-            <GlowButton variant="ghost" size="lg">
+
+
+            <GlowButton 
+              variant="ghost" 
+              size="lg"
+              onClick={() => {
+                // Replace this URL with your TinyURL pointing to Google Drive later
+                window.open("https://tinyurl.com/TectonixUIU", "_blank");
+              }}
+            >
               <Download className="h-5 w-5" />
               Download App
             </GlowButton>
           </motion.div>
+
 
           {/* Stats */}
           <motion.div

@@ -1,9 +1,13 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
+from pydantic import BaseModel
+from typing import List
 from PIL import Image, ImageOps
 import io
 import numpy as np
+import torch
+import torch.nn as nn
 
 app = FastAPI()
 
@@ -14,29 +18,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. General Awareness (Filters out office clutter)
+class SeismicData(BaseModel):
+    payload: List[List[float]]
+
+class Seismic1DCNN(nn.Module):
+    def __init__(self):
+        super(Seismic1DCNN, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv1d(3, 16, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+            nn.Conv1d(16, 32, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(32 * 25, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+        )
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
 general_model = YOLO('yolov8n.pt') 
 
-# 2. Structural Awareness (Your Custom Model)
 try:
     facade_model = YOLO('facade_model.pt')
-    print("✅ Custom Facade Model Loaded")
+    print("### Custom Facade Model Loaded")
 except:
-    print("⚠️ Custom model missing, using fallback (Warning: Standard YOLOv8n cannot detect windows)")
+    print("# Custom model missing, using fallback")
     facade_model = YOLO('yolov8n-seg.pt')
+
+seismic_model = Seismic1DCNN()
+try:
+    seismic_model.load_state_dict(torch.load("seismic_1d_cnn.pt", map_location=torch.device('cpu'), weights_only=True))
+    seismic_model.eval()
+    print("### Seismic 1D-CNN Model Loaded")
+except:
+    print("# Seismic model missing")
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile = File(...)):
     image_data = await file.read()
     image = Image.open(io.BytesIO(image_data))
     
-    # FIX: Rotation for mobile
     image = ImageOps.exif_transpose(image)
     
     detected_objects = []
     
-    # --- STEP 1: SAFETY CHECK (Filter out mice/laptops) ---
-    # COCO IDs: Laptop(63), Mouse(64), Keyboard(66), Cup(41), TV(62), Chair(56)
     indoor_ids = [63, 64, 66, 41, 62, 56] 
     gen_results = general_model(image, conf=0.40)
     
@@ -51,14 +85,12 @@ async def analyze_image(file: UploadFile = File(...)):
                 "detected_elements": []
             }
 
-    # --- STEP 2: FACADE SCAN ---
     results = facade_model(image, conf=0.45, retina_masks=True)
     result = results[0]
     
     total_opening_pixels = 0.0 
     total_wall_pixels = 0.0
     
-    # Counters for labeling
     window_count = 0
     door_count = 0
     
@@ -71,8 +103,6 @@ async def analyze_image(file: UploadFile = File(...)):
             obj_class_id = int(classes[i])
             obj_name = result.names[obj_class_id]
             
-            # --- LABELING LOGIC ---
-            # Create a distinct label like "Window 1", "Window 2"
             display_label = obj_name.capitalize()
             
             if obj_name in ['window', 'glass', 'opening']:
@@ -82,7 +112,6 @@ async def analyze_image(file: UploadFile = File(...)):
                 door_count += 1
                 display_label = f"Door {door_count}"
 
-            # Calculate Area (Shoelace Formula)
             x = mask[:, 0]
             y = mask[:, 1]
             area_val = float(0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1))))
@@ -96,14 +125,13 @@ async def analyze_image(file: UploadFile = File(...)):
                 total_wall_pixels += area_val
             
             detected_objects.append({
-                "type": display_label,  # <--- Updates the text shown on Frontend
+                "type": display_label,  
                 "confidence": float(confidences[i]),
                 "area_px": area_val,
                 "is_risk_element": is_opening,
                 "polygon": mask.tolist() 
             })
 
-    # --- STEP 3: SCORE ---
     relevant_area = total_wall_pixels + total_opening_pixels
     risk_score = 0.0
     
@@ -120,3 +148,25 @@ async def analyze_image(file: UploadFile = File(...)):
         "risk_score": float(round(risk_score, 2)),
         "detected_elements": detected_objects
     }
+
+@app.post("/analyze-seismic")
+async def analyze_seismic(data: SeismicData):
+    try:
+        if len(data.payload) != 3 or any(len(axis) != 100 for axis in data.payload):
+            raise HTTPException(status_code=400, detail="Invalid payload")
+
+        input_tensor = torch.tensor([data.payload], dtype=torch.float32)
+
+        with torch.no_grad():
+            prediction = seismic_model(input_tensor).item()
+
+        is_earthquake = bool(prediction > 0.85) 
+
+        return {
+            "success": True,
+            "is_earthquake": is_earthquake,
+            "confidence_score": round(prediction * 100, 2)
+        }
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}

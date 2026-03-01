@@ -10,7 +10,7 @@ const endpoints = {
     // "localhost" means the PHONE itself when running on Android.
     // To connect to your computer's server during mobile dev, 
     // you MUST use your computer's local Wi-Fi IP address (e.g., 192.168.1.x)
-    NODE_SERVER: "http://192.168.1.XXX:5000", 
+    NODE_SERVER: "https://sharp-sheep-help.loca.lt", 
     AI_ENGINE: "http://192.168.1.XXX:8000",
   },
   production: {

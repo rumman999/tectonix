@@ -3,6 +3,49 @@ import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
 
+export const analyzeSeismicMotion = async (req, res) => {
+  try {
+    const { payload, location } = req.body; 
+    
+    
+    // (Production: to be replaced with your Hugging Face URL)
+    const aiResponse = await axios.post('http://localhost:8000/analyze-seismic', {
+      payload: payload
+    });
+
+    if (aiResponse.data.is_earthquake) {
+      console.log(`🚨 AI CONFIRMED EARTHQUAKE NEAR ${location || 'Unknown'}! Confidence: ${aiResponse.data.confidence_score}%`);
+      
+      const io = req.app.get('io'); 
+      if (io) {
+        io.emit('earthquake_warning', {
+          location: location || "your area",
+          confidence: aiResponse.data.confidence_score,
+          time: new Date().toISOString()
+        });
+      }
+
+      return res.json({ 
+        success: true, 
+        is_earthquake: true, 
+        message: "Earthquake verified! Alarm broadcasted." 
+      });
+      
+    } else {
+      console.log(`🛑 AI Filtered False Alarm (Confidence: ${aiResponse.data.confidence_score}%). Just noise.`);
+      return res.json({ 
+        success: true, 
+        is_earthquake: false, 
+        message: "False alarm filtered out by AI." 
+      });
+    }
+
+  } catch (error) {
+    console.error("Error communicating with Python AI Engine:", error.message);
+    res.status(500).json({ success: false, error: "AI Engine offline or failed." });
+  }
+};
+
 export const analyzeImage = async (req, res) => {
   try {
     if (!req.file) {

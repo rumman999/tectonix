@@ -186,7 +186,7 @@ export const reportSeismicActivity = async (req, res) => {
         const distinctDeviceCount = parseInt(countResult.rows[0].count);
         
         // ### change 2 to any number of device here  <---- ATTENTION
-        if (distinctDeviceCount >= 2) {
+        if (distinctDeviceCount >= 1) {
             
             const activeEvent = await client.query(
                 "SELECT event_id FROM Disaster_Events WHERE event_type = 'Earthquake' AND is_active = TRUE"

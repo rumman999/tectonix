@@ -2,21 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { Activity, Radio, Smartphone, Settings2, Menu, ShieldAlert, Waves } from "lucide-react";
+import { Activity, Radio, Smartphone, Settings2, Menu, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-
-const getClientId = () => {
-  let uuid = localStorage.getItem("seismic_client_uuid");
-  if (!uuid) {
-    uuid = crypto.randomUUID();
-    localStorage.setItem("seismic_client_uuid", uuid);
-  }
-  return uuid;
-};
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { BackgroundMode } from '@awesome-cordova-plugins/background-mode';
+import { Capacitor } from '@capacitor/core';
 
 const SeismicMode = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -24,61 +17,13 @@ const SeismicMode = () => {
   const [magnitude, setMagnitude] = useState(0);
   const [threshold, setThreshold] = useState([1.5]); 
   const [systemStatus, setSystemStatus] = useState("SAFE");
-  const [shakeCount, setShakeCount] = useState(0);
-  const [clientId, setClientId] = useState("");
-  
 
-  const lastReportTime = useRef<number>(0);
+  // AI Buffers
+  const bufferRef = useRef<number[][]>([[], [], []]); // [X, Y, Z]
+  const isAnalyzing = useRef(false); // Prevents spamming the AI
+  
   const historyRef = useRef<number[]>(new Array(100).fill(0));
   const [graphPath, setGraphPath] = useState("");
-
-  useEffect(() => {
-    setClientId(getClientId());
-
-    const checkStatus = async () => {
-      try {
-        const res = await api.get("/dashboard/seismic/status");
-        if (res.data.status === "CRITICAL") {
-            setSystemStatus("CRITICAL");
-        } else {
-            setSystemStatus("SAFE");
-        }
-      } catch (err) { console.error("Polling error", err); }
-    };
-
-    const interval = setInterval(checkStatus, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const reportShake = async (mag: number) => {
-    const now = Date.now();
-    if (now - lastReportTime.current < 5000) return;
-    lastReportTime.current = now;
-
-    try {
-        const payload = { 
-            lat: 23.8103, 
-            lng: 90.4125, 
-            magnitude: mag,
-            client_uuid: clientId 
-        };
-        await api.post("/dashboard/seismic/report", payload);
-        setDebugLog(`Sent: ${mag.toFixed(2)}g`);
-        setShakeCount(prev => prev + 1);
-    } catch (err: any) {
-        setDebugLog("Error:" + err.message);
-    }
-  };
-
-  const handleDismiss = async () => {
-    try {
-      await api.post("/dashboard/seismic/resolve");
-      setSystemStatus("SAFE"); 
-      setShakeCount(0);
-    } catch (err) {
-      console.error("Failed to resolve", err);
-    }
-  };
 
   const updateGraph = (mag: number) => {
     historyRef.current.push(mag);
@@ -91,40 +36,126 @@ const SeismicMode = () => {
     setGraphPath(path);
   };
 
+  // --- THE NEW AI BRIDGE ---
+  const sendToAI = async () => {
+    if (isAnalyzing.current) return;
+    isAnalyzing.current = true;
+    
+    try {
+        setDebugLog("AI Analyzing Signature...");
+        
+        // Take a snapshot of the current 100 3D readings
+        const payload = [
+            [...bufferRef.current[0]],
+            [...bufferRef.current[1]],
+            [...bufferRef.current[2]]
+        ];
+
+        // Send to your Node.js server, which forwards to FastAPI
+        const res = await api.post("/scanner/analyze-seismic", {
+            payload: payload,
+            location: "Dhaka (Live)"
+        });
+
+        if (res.data.is_earthquake) {
+            setDebugLog(`AI CONFIRMED EARTHQUAKE!`);
+            setSystemStatus("CRITICAL"); 
+
+            if (Capacitor.isNativePlatform()) {
+                await LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: "EARTHQUAKE DETECTED",
+                            body: "Seek shelter immediately! Tectonix AI verified seismic activity in your area.",
+                            id: new Date().getTime(),
+                            schedule: { at: new Date(Date.now() + 500) },
+                            smallIcon: "ic_stat_icon_config_sample",
+                        }
+                    ]
+                });
+            }
+            
+        } else {
+            setDebugLog("AI Filtered: False Alarm (Noise)");
+        }
+    } catch (err: any) {
+        setDebugLog("AI Offline: " + err.message);
+    } finally {
+        // Wait 3 seconds before allowing another AI scan
+        setTimeout(() => { isAnalyzing.current = false; }, 3000);
+    }
+  };
+
+  const handleReadingRaw = (x: number, y: number, z: number, mag: number) => {
+      setMagnitude(mag);
+      updateGraph(mag);
+      
+      // 1. Add to the 3D AI buffer
+      bufferRef.current[0].push(x);
+      bufferRef.current[1].push(y);
+      bufferRef.current[2].push(z);
+
+      // 2. Keep it exactly 100 readings long (2 seconds)
+      if (bufferRef.current[0].length > 100) {
+          bufferRef.current[0].shift();
+          bufferRef.current[1].shift();
+          bufferRef.current[2].shift();
+      }
+
+      // 3. If magnitude crosses threshold AND we have 100 readings, ask the AI!
+      if (mag > threshold[0] && bufferRef.current[0].length === 100) {
+          sendToAI();
+      }
+  };
+
   const startMonitoring = async () => {
     setIsMonitoring(true);
-    setDebugLog("Active");
-    if ('Accelerometer' in window) {
+    setDebugLog("Active. Waiting for movement...");
+
+    if (Capacitor.isNativePlatform()) {
       try {
-        const sensor = new Accelerometer({ frequency: 60 });
+        await LocalNotifications.requestPermissions();
+        
+        BackgroundMode.enable();
+        BackgroundMode.disableWebViewOptimizations(); 
+        
+        setDebugLog("Background Service Active.");
+      } catch (err) {
+        console.error("Native plugins failed to load", err);
+      }
+    }
+    
+    try {
+      if ('Accelerometer' in window) {
+        const sensor = new (window as any).Accelerometer({ frequency: 60 });
         sensor.addEventListener('reading', () => {
             const mag = Math.sqrt(sensor.x**2 + sensor.y**2 + sensor.z**2) / 9.8;
-            handleReading(mag);
+            handleReadingRaw(sensor.x, sensor.y, sensor.z, mag);
         });
         sensor.start();
         return;
-      } catch (e) { console.log("Android API failed"); }
+      }
+      
+      if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+        await (DeviceMotionEvent as any).requestPermission();
+      }
+      
+      window.addEventListener("devicemotion", (event) => {
+        const acc = event.accelerationIncludingGravity || event.acceleration; 
+        if (!acc) return;
+        const x = acc.x || 0;
+        const y = acc.y || 0;
+        const z = acc.z || 0;
+        const mag = Math.sqrt(x**2 + y**2 + z**2) / 9.8;
+        handleReadingRaw(x, y, z, Math.abs(mag - 1));
+      });
+    } catch (err) {
+      setDebugLog("Error connecting to sensors.");
     }
-    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
-      await (DeviceMotionEvent as any).requestPermission();
-    }
-    window.addEventListener("devicemotion", (event) => {
-      const acc = event.accelerationIncludingGravity || event.acceleration; 
-      if (!acc) return;
-      const mag = Math.sqrt((acc.x||0)**2 + (acc.y||0)**2 + (acc.z||0)**2) / 9.8;
-      handleReading(Math.abs(mag - 1));
-    });
-  };
-
-  const handleReading = (mag: number) => {
-      setMagnitude(mag);
-      updateGraph(mag);
-      if (mag > threshold[0]) reportShake(mag); 
   };
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col md:flex-row">
-      
       <AnimatePresence>
         {systemStatus === "CRITICAL" && (
             <motion.div 
@@ -133,11 +164,11 @@ const SeismicMode = () => {
             >
                 <div className="animate-pulse flex flex-col items-center">
                     <ShieldAlert size={120} className="text-white mb-6" />
-                    <h1 className="text-5xl font-black text-white mb-4">EARTHQUAKE</h1>
-                    <p className="text-white/90 text-xl">System Triggered by Crowd Data</p>
+                    <h1 className="text-5xl font-black text-white mb-4">EARTHQUAKE DETECTED</h1>
+                    <p className="text-white/90 text-xl">Verified by 1D-CNN AI Engine</p>
                 </div>
                 <Button 
-                    onClick={handleDismiss} 
+                    onClick={() => setSystemStatus("SAFE")} 
                     className="mt-16 bg-white text-red-600 hover:bg-white/90 font-bold px-10 py-8 text-2xl rounded-full shadow-2xl"
                 >
                     I AM SAFE (STOP ALARM)
@@ -155,9 +186,8 @@ const SeismicMode = () => {
             <SheetTrigger asChild>
                 <Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button>
             </SheetTrigger>
-            
             <SheetContent side="left" className="w-64 p-0 border-r [&>button]:hidden">
-                <SheetTitle className="hidden">Navigation Menu</SheetTitle>
+                <SheetTitle className="sr-only">Menu</SheetTitle>
                 <DashboardSidebar />
             </SheetContent>
         </Sheet>
@@ -172,10 +202,10 @@ const SeismicMode = () => {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
               <span className="hidden md:block"><Radio className="h-8 w-8 text-primary" /></span>
-              Crowd-Sourced Network
+              AI Edge Sensor
             </h1>
             <p className="text-sm text-muted-foreground mt-1 font-mono">
-              ID: {clientId.slice(0, 8)}...
+              Running 1D-CNN Locally
             </p>
           </div>
 
@@ -217,13 +247,13 @@ const SeismicMode = () => {
                 <>
                     <Radio className="h-12 w-12 text-destructive animate-ping mb-2" />
                     <h2 className="text-xl font-bold text-destructive">VIBRATION DETECTED</h2>
-                    <p className="text-destructive/80 text-sm">Sending data to Tectonix Cloud...</p>
+                    <p className="text-destructive/80 text-sm">Sending to AI for verification...</p>
                 </>
             ) : (
                 <>
                     <Activity className="h-12 w-12 text-primary/50 mb-2" />
                     <h2 className="text-lg font-bold text-foreground">Standing By</h2>
-                    <p className="text-muted-foreground text-sm">Local Reports Sent: {shakeCount}</p>
+                    <p className="text-muted-foreground text-sm">Waiting for threshold break</p>
                 </>
             )}
         </div>
@@ -234,10 +264,6 @@ const SeismicMode = () => {
                 <h3 className="font-medium text-foreground">Sensor Sensitivity</h3>
             </div>
             <Slider value={threshold} onValueChange={setThreshold} max={3.0} step={0.1} className="my-4" />
-            <div className="flex justify-between text-xs text-muted-foreground px-1">
-                <span>Sensitive (Walking)</span>
-                <span>Hard Shake (Earthquake)</span>
-            </div>
         </div>
       </main>
     </div>

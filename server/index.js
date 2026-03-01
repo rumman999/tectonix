@@ -76,7 +76,7 @@ const io = new Server(httpServer, {
   }
 });
 
-// Make 'io' available to our Express controllers (crucial for system messages later!)
+
 app.set('io', io);
 
 // --- SOCKET.IO LOGIC ---

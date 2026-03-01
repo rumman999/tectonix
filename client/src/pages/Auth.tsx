@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -83,11 +83,18 @@ const ownerTypes = ["Individual", "Corporate", "Government"];
 const proficiencyLevels = ["Beginner", "Intermediate", "Expert"];
 
 export const Auth = () => {
+  const navigate = useNavigate();
+ 
+  useEffect(() => {
+    if (localStorage.getItem("token")) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
+
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState<UserRole>("citizen");
   const [showPassword, setShowPassword] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
