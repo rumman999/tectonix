@@ -7,9 +7,10 @@ export const analyzeSeismicMotion = async (req, res) => {
   try {
     const { payload, location } = req.body; 
     
+
+    const AI_BASE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
     
-    // (Production: to be replaced with your Hugging Face URL)
-    const aiResponse = await axios.post('http://localhost:8000/analyze-seismic', {
+    const aiResponse = await axios.post(`${AI_BASE_URL}/analyze-seismic`, {
       payload: payload
     });
 
@@ -58,7 +59,10 @@ export const analyzeImage = async (req, res) => {
     const formData = new FormData();
     formData.append("file", fs.createReadStream(filePath));
 
-    const aiResponse = await axios.post("http://127.0.0.1:8000/analyze", formData, {
+
+    const AI_BASE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
+
+    const aiResponse = await axios.post(`${AI_BASE_URL}/analyze`, formData, {
       headers: {
         ...formData.getHeaders(),
       },

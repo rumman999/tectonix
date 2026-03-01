@@ -2,7 +2,7 @@
 // MASTER ENVIRONMENT SWITCH
 // Change this to "production" when you build the APK!
 // ==========================================
-const ENV: "development" | "production" = "development";
+const ENV: "development" | "production" = "production";
 
 const endpoints = {
   development: {
@@ -15,8 +15,8 @@ const endpoints = {
   },
   production: {
     // Your free hosted URLs go here
-    NODE_SERVER: "https://tectonix-node.onrender.com", 
-    AI_ENGINE: "https://your-username.hf.space", // Hugging Face or Ngrok URL
+    NODE_SERVER: "https://tectonix-lo13.onrender.com/", 
+    AI_ENGINE: "https://rumman999-tectonix-ai.hf.space", // Hugging Face or Ngrok URL
   }
 };
 
