@@ -45,7 +45,7 @@ export const getRecentLogs = async (req, res) => {
     `);
 
     const logs = result.rows.map(row => {
-      // Clean up the browser string
+      
       let sensorType = row.device_model || "Mobile Sensor";
       if (sensorType.includes("Mozilla")) {
         sensorType = sensorType.includes("Android") ? "Android Device" : 
@@ -119,7 +119,7 @@ export const getBuildingRiskDistribution = async (req, res) => {
 
     const result = await pool.query(query);
     
-    // Send back formatted data
+    
     const distribution = result.rows.map(row => ({
       name: row.name,
       value: parseInt(row.value)
@@ -316,7 +316,7 @@ export const getAlertFeed = async (req, res) => {
 
     res.json(formattedAlerts);
   } catch (err) {
-    // THIS WILL SHOW YOU THE REAL ERROR IN YOUR TERMINAL
+    
     console.error("CRITICAL DATABASE ERROR:", err.message); 
     res.status(500).json({ error: "Database error", details: err.message });
   }

@@ -15,11 +15,11 @@ export const createDamageReport = async (req, res) => {
     let imagePath = null;
 
     if (req.file) {
-      // 1. Create a unique filename
+      
       const fileExt = path.extname(req.file.originalname);
       const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${fileExt}`;
 
-      // 2. Upload the file to Supabase
+      
       const { data, error } = await supabase.storage
         .from('tectonix-reports') 
         .upload(fileName, req.file.buffer, {
@@ -32,7 +32,7 @@ export const createDamageReport = async (req, res) => {
         return res.status(500).json({ error: "Failed to upload image to Supabase" });
       }
 
-      // 3. Get the public URL for the database
+      
       const { data: publicUrlData } = supabase.storage
         .from('tectonix-reports')
         .getPublicUrl(fileName);

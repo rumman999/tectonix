@@ -68,9 +68,7 @@ export const getPersonnel = async (req, res) => {
 
 export const assignPersonnel = async (req, res) => {
   const { task_type, task_id, responder_ids } = req.body;
-  // task_type: 'Beacon' | 'Event'
-  // task_id: UUID
-  // responder_ids: string[] (Array of UUIDs)
+
 
   const client = await pool.connect();
   try {
@@ -144,7 +142,7 @@ export const updateAssignmentStatus = async (req, res) => {
   const { assignment_id, status } = req.body;
 
   try {
-    // 1. Update the status
+    
     const result = await pool.query(
       `UPDATE Rescue_Assignments SET status = $1 WHERE assignment_id = $2 AND responder_user_id = $3 RETURNING *`,
       [status, assignment_id, req.user.user_id] 
@@ -157,11 +155,11 @@ export const updateAssignmentStatus = async (req, res) => {
     const assignment = result.rows[0];
     const taskId = assignment.task_type === 'Beacon' ? assignment.beacon_id : assignment.event_id;
 
-    // --- NEW FIX: Fetch the actual user's name directly from the DB ---
+    
     const userRes = await pool.query(`SELECT full_name FROM Users WHERE user_id = $1`, [req.user.user_id]);
     const userName = userRes.rows[0]?.full_name || "A Responder";
 
-    // 2. Generate the automated system message WITH the real name
+    
     const systemText = `${userName} marked their status as: ${status.replace("_", " ")}`;
     
     const msgResult = await pool.query(
@@ -176,7 +174,7 @@ export const updateAssignmentStatus = async (req, res) => {
         sender_name: "System"
     };
 
-    // 3. Emit the system message
+    
     const io = req.app.get('io');
     if (io) {
         io.to(taskId).emit("receive_message", savedSystemMsg);
@@ -190,30 +188,30 @@ export const updateAssignmentStatus = async (req, res) => {
 };
 
 export const resolveAlert = async (req, res) => {
-  const { type, id } = req.body; // type: 'Beacon' | 'Event'
+  const { type, id } = req.body;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     if (type === 'Beacon') {
-      // 1. Mark Beacon as Resolved
+      
       await client.query(
         `UPDATE Distress_Beacons SET status = 'Resolved' WHERE beacon_id = $1`,
         [id]
       );
-      // 2. Mark all assignments for this beacon as Completed
+      
       await client.query(
         `UPDATE Rescue_Assignments SET status = 'Completed' WHERE beacon_id = $1`,
         [id]
       );
     } else if (type === 'Event') {
-      // 1. Mark Event as Inactive
+      
       await client.query(
         `UPDATE Disaster_Events SET is_active = FALSE WHERE event_id = $1`,
         [id]
       );
-       // 2. Mark all assignments for this event as Completed
+       
        await client.query(
         `UPDATE Rescue_Assignments SET status = 'Completed' WHERE event_id = $1`,
         [id]
