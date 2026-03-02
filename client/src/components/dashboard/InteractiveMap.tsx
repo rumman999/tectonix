@@ -83,7 +83,7 @@ const MapClickHandler = () => {
       const toastId = toast.loading("Identifying zone...");
 
       try {
-        const response = await fetch(`/api/zones/identify`, {
+        const response = await fetch(`${API_BASE_URL}/api/zones/identify`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -131,7 +131,7 @@ export const InteractiveMap = ({
   useEffect(() => {
     const fetchSensors = async () => {
       try {
-        const res = await fetch(`/api/dashboard/logs`);
+        const res = await fetch(`${API_BASE_URL}/api/dashboard/logs`);
         const data = await res.json();
         if (res.ok) setSensors(data);
       } catch (err) {
@@ -144,7 +144,7 @@ export const InteractiveMap = ({
     
     const fetchRiskZones = async () => {
       try {
-        const res = await fetch(`/api/buildings/map-data`);
+        const res = await fetch(`${API_BASE_URL}/api/buildings/map-data`);
         if (res.ok) {
           const buildings = await res.json();
           const highRisk = buildings.filter((b: any) => b.risk_score >= 75);

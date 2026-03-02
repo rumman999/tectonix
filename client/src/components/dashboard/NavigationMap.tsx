@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
+import { API_BASE_URL } from "@/config";
 
 // --- HAVERSINE HELPER ---
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -88,7 +89,7 @@ export const NavigationMap = ({ destLat, destLng, onClose }: NavigationMapProps)
   useEffect(() => {
     const fetchRiskZones = async () => {
       try {
-        const res = await fetch(`/api/buildings/map-data`);
+        const res = await fetch(`${API_BASE_URL}/api/buildings/map-data`);
         if (res.ok) {
           const buildings = await res.json();
           const highRisk = buildings.filter((b: any) => b.risk_score >= 75);

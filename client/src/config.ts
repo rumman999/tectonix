@@ -15,7 +15,7 @@ const endpoints = {
   },
   production: {
     // Your free hosted URLs go here
-    NODE_SERVER: "https://tectonix-lo13.onrender.com/", 
+    NODE_SERVER: "https://tectonix-lo13.onrender.com", 
     AI_ENGINE: "https://rumman999-tectonix-ai.hf.space", // Hugging Face or Ngrok URL
   }
 };
