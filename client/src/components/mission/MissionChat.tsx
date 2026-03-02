@@ -6,6 +6,7 @@ import { io, Socket } from "socket.io-client";
 import axios from "axios";
 import { API_BASE_URL, getHeaders } from "@/config";
 
+
 interface Message {
   message_id: string;
   sender_id: string;
@@ -57,7 +58,9 @@ export const MissionChat = ({
       .catch((err) => console.error("Failed to load chat history", err));
 
     // Connect to Socket
-    const newSocket = io("/");
+    const newSocket = io(API_BASE_URL, {
+      transports: ["websocket", "polling"],
+    });
     setSocket(newSocket);
 
     newSocket.emit("join_mission", taskId);
@@ -91,7 +94,6 @@ export const MissionChat = ({
     const safeUserId = currentUser?.user_id || (currentUser as any)?.id || null;
     const safeUserName =
       currentUser?.full_name || (currentUser as any)?.name || "Responder";
-
 
     socket.emit("send_message", {
       taskId,
