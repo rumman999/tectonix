@@ -109,6 +109,42 @@ export const Auth = () => {
   const [bloodType, setBloodType] = useState("");
   const [supervisorId, setSupervisorId] = useState("");
 
+  const handleQuickLogin = async (demoEmail: string, demoRole: UserRole) => {
+    setEmail(demoEmail);
+    setPassword("password");
+    setRole(demoRole);
+    setLoading(true);
+
+    const formattedRole =
+      demoRole === "responder"
+        ? "First_Responder"
+        : demoRole === "specialist" && demoEmail.includes("farhana")
+          ? "Coordinator"
+          : demoRole.charAt(0).toUpperCase() + demoRole.slice(1);
+
+    try {
+      const response = await axios.post("/api/auth/login", {
+        email: demoEmail,
+        password: "password",
+        role_type: formattedRole,
+      });
+
+      const { token, user } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("tx_current_user", JSON.stringify(user));
+
+      toast({ title: "Success", description: `Welcome ${user.full_name}` });
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error(error);
+      const message = error.response?.data?.message || "Login failed";
+      toast({ variant: "destructive", title: "Error", description: message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); // Disable button
@@ -149,6 +185,7 @@ export const Auth = () => {
       const { token, user } = response.data;
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("tx_current_user", JSON.stringify(user));
 
       toast({ title: "Success", description: `Welcome ${user.full_name}` });
 
@@ -689,6 +726,38 @@ export const Auth = () => {
               {!loading && <ArrowRight className="h-5 w-5" />}
             </motion.button>
           </form>
+
+          {/* Quick Demo Access sandbox */}
+          {isLogin && (
+            <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+              <p className="text-[11px] text-muted-foreground text-center font-mono tracking-wider uppercase">
+                Select a Demo User from below
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("tanim_demo@struct.com", "specialist")}
+                  className="py-2 px-1 text-xs rounded-lg border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/20 text-blue-400 font-medium transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  Specialist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("farhana_cmd@tectonix.gov.bd", "specialist")}
+                  className="py-2 px-1 text-xs rounded-lg border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/20 text-purple-400 font-medium transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  Coordinator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin("rahim_dhaka@gmail.com", "citizen")}
+                  className="py-2 px-1 text-xs rounded-lg border border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/20 text-cyan-400 font-medium transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  Citizen
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">

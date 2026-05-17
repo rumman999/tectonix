@@ -1,0 +1,42 @@
+[
+  {
+    "device_id": 1,
+    "client_uuid": "seismic-client-tanim",
+    "device_model": "Pixel 7 Pro",
+    "user_id": "usr-specialist-01",
+    "owner_name": "Engr. Tanim Ahmed",
+    "last_active": "2026-05-18T00:32:15Z"
+  },
+  {
+    "device_id": 2,
+    "client_uuid": "seismic-client-rahim",
+    "device_model": "Xiaomi Redmi Note 12",
+    "user_id": "usr-owner-01",
+    "owner_name": "Md. Rahim",
+    "last_active": "2026-05-18T00:41:10Z"
+  },
+  {
+    "device_id": 3,
+    "client_uuid": "seismic-client-kuddus",
+    "device_model": "Samsung Galaxy A54",
+    "user_id": "usr-volunteer-01",
+    "owner_name": "Kuddus Ali",
+    "last_active": "2026-05-18T00:45:00Z"
+  },
+  {
+    "device_id": 4,
+    "client_uuid": "seismic-client-nusrat",
+    "device_model": "iPhone 14",
+    "user_id": "usr-responder-01",
+    "owner_name": "Nusrat Jahan",
+    "last_active": "2026-05-18T00:46:12Z"
+  },
+  {
+    "device_id": 5,
+    "client_uuid": "seismic-client-farhana",
+    "device_model": "Xiaomi Redmi Note 12",
+    "user_id": "usr-citizen-01",
+    "owner_name": "Farhana Islam",
+    "last_active": "2026-05-18T00:44:30Z"
+  }
+]

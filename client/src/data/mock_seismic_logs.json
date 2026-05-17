@@ -1,0 +1,62 @@
+[
+  {
+    "vibe_id": "vibe-eq-01",
+    "device_id": 1,
+    "device_model": "Pixel 7 Pro",
+    "lat": 23.7150,
+    "lng": 90.3880,
+    "intensity_pga": 0.82,
+    "zone_name": "Old Dhaka / Lalbagh",
+    "relative_minutes": 15
+  },
+  {
+    "vibe_id": "vibe-bg-01",
+    "device_id": 2,
+    "device_model": "Xiaomi Redmi Note 12",
+    "lat": 23.7925,
+    "lng": 90.4162,
+    "intensity_pga": 0.02,
+    "zone_name": "Gulshan / Banani",
+    "relative_minutes": 5
+  },
+  {
+    "vibe_id": "vibe-bg-02",
+    "device_id": 3,
+    "device_model": "Samsung Galaxy A54",
+    "lat": 23.8068,
+    "lng": 90.3675,
+    "intensity_pga": 0.04,
+    "zone_name": "Mirpur / Mohammadpur",
+    "relative_minutes": 8
+  },
+  {
+    "vibe_id": "vibe-bg-03",
+    "device_id": 4,
+    "device_model": "iPhone 14",
+    "lat": 23.8722,
+    "lng": 90.3980,
+    "intensity_pga": 0.01,
+    "zone_name": "Uttara",
+    "relative_minutes": 12
+  },
+  {
+    "vibe_id": "vibe-bg-04",
+    "device_id": 5,
+    "device_model": "Xiaomi Redmi Note 12",
+    "lat": 23.7460,
+    "lng": 90.3735,
+    "intensity_pga": 0.03,
+    "zone_name": "Mirpur / Mohammadpur",
+    "relative_minutes": 3
+  },
+  {
+    "vibe_id": "vibe-bg-05",
+    "device_id": 2,
+    "device_model": "Xiaomi Redmi Note 12",
+    "lat": 23.7112,
+    "lng": 90.4180,
+    "intensity_pga": 0.05,
+    "zone_name": "Old Dhaka / Lalbagh",
+    "relative_minutes": 2
+  }
+]

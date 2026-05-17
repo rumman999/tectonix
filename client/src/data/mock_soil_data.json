@@ -1,0 +1,82 @@
+[
+  {
+    "building_id": 1,
+    "location": "Lalbagh, Old Dhaka",
+    "lat": 23.7185,
+    "lng": 90.3882,
+    "liquefaction_risk": 0.88,
+    "soil_moisture": 48.5,
+    "groundwater_level": 1.4,
+    "soil_type": "Alluvial Silt / Soft Clay"
+  },
+  {
+    "building_id": 2,
+    "location": "Sutraput, Old Dhaka",
+    "lat": 23.7112,
+    "lng": 90.4180,
+    "liquefaction_risk": 0.82,
+    "soil_moisture": 44.1,
+    "groundwater_level": 1.8,
+    "soil_type": "Alluvial Silt / Soft Clay"
+  },
+  {
+    "building_id": 3,
+    "location": "Gulshan 2, Gulshan",
+    "lat": 23.7925,
+    "lng": 90.4162,
+    "liquefaction_risk": 0.25,
+    "soil_moisture": 18.2,
+    "groundwater_level": 15.6,
+    "soil_type": "Red Clay / Madhupur Tract"
+  },
+  {
+    "building_id": 4,
+    "location": "Banani DOHS",
+    "lat": 23.7995,
+    "lng": 90.4030,
+    "liquefaction_risk": 0.28,
+    "soil_moisture": 19.5,
+    "groundwater_level": 14.8,
+    "soil_type": "Red Clay / Madhupur Tract"
+  },
+  {
+    "building_id": 5,
+    "location": "Mirpur 10, Mirpur",
+    "lat": 23.8068,
+    "lng": 90.3675,
+    "liquefaction_risk": 0.52,
+    "soil_moisture": 32.4,
+    "groundwater_level": 6.8,
+    "soil_type": "Sandy Clay / Silt"
+  },
+  {
+    "building_id": 6,
+    "location": "Mohammadpur Housing",
+    "lat": 23.7650,
+    "lng": 90.3580,
+    "liquefaction_risk": 0.58,
+    "soil_moisture": 35.8,
+    "groundwater_level": 5.4,
+    "soil_type": "Sandy Clay / Silt"
+  },
+  {
+    "building_id": 7,
+    "location": "Sector 4, Uttara",
+    "lat": 23.8722,
+    "lng": 90.3980,
+    "liquefaction_risk": 0.32,
+    "soil_moisture": 21.0,
+    "groundwater_level": 12.5,
+    "soil_type": "Red Clay / Madhupur Tract"
+  },
+  {
+    "building_id": 8,
+    "location": "Dhanmondi R/A",
+    "lat": 23.7460,
+    "lng": 90.3735,
+    "liquefaction_risk": 0.65,
+    "soil_moisture": 38.0,
+    "groundwater_level": 4.1,
+    "soil_type": "Alluvial Silt / Soft Clay"
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "beacon_id": "beacon-sos-01",
+    "victim_name": "Kuddus Ali",
+    "phone_number": "+8801711223344",
+    "lat": 23.7185,
+    "lng": 90.3882,
+    "status": "Active",
+    "relative_minutes": 10,
+    "description": "Trapped in a 6-story garment factory stairwell in Lalbagh",
+    "assigned_squad": ""
+  },
+  {
+    "beacon_id": "beacon-sos-02",
+    "victim_name": "Farhana Islam",
+    "phone_number": "+8801819876543",
+    "lat": 23.7460,
+    "lng": 90.3735,
+    "status": "Active",
+    "relative_minutes": 5,
+    "description": "Soft-story collapse at a residential building in Dhanmondi Road 8",
+    "assigned_squad": "RAB Rapid Rescue"
+  },
+  {
+    "beacon_id": "beacon-sos-03",
+    "victim_name": "Abul Kalam",
+    "phone_number": "+8801912345678",
+    "lat": 23.8068,
+    "lng": 90.3675,
+    "status": "Active",
+    "relative_minutes": 14,
+    "description": "Road blocked by debris near Mirpur 10 roundabout, urgent medical help needed",
+    "assigned_squad": "FSCD Squad Alpha - Fire Service and Civil Defence"
+  }
+]

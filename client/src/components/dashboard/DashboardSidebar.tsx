@@ -24,19 +24,19 @@ const menuItems = [
       icon: LayoutDashboard, 
       label: "Dashboard", 
       href: "/dashboard",
-      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder", "Coordinator"]
     },
     { 
       icon: Activity, 
       label: "Seismic Mode", 
       href: "/seismic",
-      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder", "Coordinator"]
     },
     { 
       icon: Radio, 
       label: "Emergency Beacon", 
       href: "/beacon",
-      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder", "Coordinator"]
     },
     { 
       icon: Calculator, 
@@ -60,7 +60,7 @@ const menuItems = [
       icon: ShieldCheck, 
       label: "My Missions", 
       href: "/my-mission",
-      allowedRoles: ["Volunteer", "First_Responder"] 
+      allowedRoles: ["Volunteer", "First_Responder", "Coordinator"] 
     },
     { 
       icon: ScanLine, 
@@ -72,13 +72,13 @@ const menuItems = [
       icon: Shield, 
       label: "Rescue Coord", 
       href: "/rescue",
-      allowedRoles: ["Specialist"] 
+      allowedRoles: ["Specialist", "Coordinator"] 
     },
     { 
       icon: Settings, 
       label: "Settings", 
       href: "/settings",
-      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder"]
+      allowedRoles: ["Citizen", "Owner", "Volunteer", "Specialist", "First_Responder", "Coordinator"]
     },
 ];
 

@@ -1,0 +1,11 @@
+[
+  {
+    "event_id": "event-eq-dhaka-01",
+    "event_type": "Earthquake",
+    "magnitude": 5.6,
+    "lat": 23.7150,
+    "lng": 90.3880,
+    "is_active": true,
+    "relative_minutes": 15
+  }
+]

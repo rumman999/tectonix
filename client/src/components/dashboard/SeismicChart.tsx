@@ -24,7 +24,9 @@ export const SeismicChart = () => {
       }
     };
 
-    fetchChartData();
+    fetchChartData(); // Initial load
+    const intervalId = setInterval(fetchChartData, 1500); // Dynamic real-time polling every 1.5s
+    return () => clearInterval(intervalId);
   }, []);
 
   return (
@@ -36,7 +38,7 @@ export const SeismicChart = () => {
             Recent Seismic Activity
           </h3>
           <p className="text-sm text-muted-foreground">
-            24-hour magnitude readings (Live)
+            Real-time magnitude readings (Live)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -55,7 +57,7 @@ export const SeismicChart = () => {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
-              interval={4} // Show fewer labels to avoid crowding
+              interval={19} // Spaces exactly 5 clean, uncluttered ticks across 100 historical readings
             />
             <YAxis
               axisLine={false}

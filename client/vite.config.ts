@@ -1,14 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
-import basicSsl from '@vitejs/plugin-basic-ssl';
 import path from "path";
 import { fileURLToPath, URL } from "url";
 
 export default defineConfig({
+  base: '/tectonix/',
   server: {
     host: '0.0.0.0', // Exposes server to local network (Wi-Fi)
-    port: 8080,      // Port number
-    https: true,     // Enables HTTPS
+    port: 3000,      // Port number
+    https: false,    // Disables HTTPS (HTTP strictly)
     proxy: {
       // PROXY CONFIGURATION:
       '/api': {
@@ -25,7 +25,6 @@ export default defineConfig({
   
   plugins: [
     react(),
-    basicSsl(), // Generates the self-signed cert
   ],
   resolve: {
     alias: {

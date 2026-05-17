@@ -84,15 +84,15 @@ export const HeroSection = () => {
             <GlowButton
               variant="primary"
               size="lg"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
             >
               Launch Dashboard
               <ArrowRight className="h-5 w-5" />
             </GlowButton>
-            <GlowButton variant="ghost" size="lg">
+            {/* <GlowButton variant="ghost" size="lg">
               <Download className="h-5 w-5" />
               Download App
-            </GlowButton>
+            </GlowButton> */}
           </motion.div>
 
           {/* Stats */}
